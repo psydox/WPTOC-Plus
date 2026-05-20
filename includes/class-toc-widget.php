@@ -13,7 +13,7 @@ if ( ! class_exists( 'TOC_Widget' ) ) :
 				'height'  => 350,
 				'id_base' => 'toc-widget',
 			];
-			parent::__construct( 'toc-widget', 'TOC+', $widget_options, $control_options );
+			parent::__construct( 'toc-widget', 'WPTOC+', $widget_options, $control_options );
 		}
 
 
@@ -45,14 +45,6 @@ if ( ! class_exists( 'TOC_Widget' ) ) :
 				}
 				$hide_inline = $toc_options['show_toc_in_widget_only'];
 
-				$css_classes = '';
-				// bullets?
-				if ( $toc_options['bullet_spacing'] ) {
-					$css_classes .= ' have_bullets';
-				} else {
-					$css_classes .= ' no_bullets';
-				}
-
 				if ( $items ) {
 					// before widget (defined by themes)
 					$html .= $args['before_widget'];
@@ -63,7 +55,7 @@ if ( ! class_exists( 'TOC_Widget' ) ) :
 					}
 
 					// display the list
-					$html .= '<ul class="toc_widget_list' . $css_classes . '">' . $items . '</ul>';
+					$html .= '<ul class="toc_widget_list">' . $items . '</ul>';
 
 					// after widget (defined by themes)
 					$html .= $args['after_widget'];

@@ -1,58 +1,71 @@
-=== Table of Contents Plus ===
-Contributors: aioseo, smub, benjaminprojas
-Tags: table of contents, indexes, toc, sitemap, cms
+=== WPTOC+ ===
+Contributors: brianvrosario
+Tags: table of contents, indexes, toc, cms
 Requires at least: 3.2
 Tested up to: 6.7
-Stable tag: 2411.1
+Stable tag: 2026.05.20.2338
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-A powerful yet user friendly plugin that automatically creates a table of contents. Can also output a sitemap listing all pages and categories.
+WPTOC+ is a fork of the original Table of Contents Plus plugin that automatically creates a table of contents.
 
 
 == Description ==
 
-A powerful yet user friendly plugin that automatically creates a context specific index or table of contents (TOC) for long pages (and custom post types).  More than just a table of contents plugin, this plugin can also output a sitemap listing pages and/or categories across your entire site.
+WPTOC+ is a fork of the original Table of Contents Plus plugin for WordPress.  It creates a context specific index or table of contents (TOC) for long pages and custom post types.
+
+Current author and contributor: Brian V. Rosario.  Past contributors and maintainers of the original project and later releases include All in One SEO Team (aioseo), Michael Tran, conjur3r, smub, and benjaminprojas.
 
 Built from the ground up and with Wikipedia in mind, the table of contents by default appears before the first heading on a page.  This allows the author to insert lead-in content that may summarise or introduce the rest of the page.  It also uses a unique numbering scheme that doesn't get lost through CSS differences across themes.
 
 This plugin is a great companion for content rich sites such as content management system oriented configurations.  That said, bloggers also have the same benefits when writing long structured articles.
 
-Includes an administration options panel where you can customise settings like display position, define the minimum number of headings before an index is displayed, other appearance, and more.  For power users, expand the advanced options to further tweak its behaviour - eg: exclude undesired heading levels like h5 and h6 from being included; disable the output of the included CSS file; adjust the top offset and more.  Using shortcodes, you can override default behaviour such as special exclusions on a specific page or even to hide the table of contents altogether.
+Includes an administration options panel where you can customise settings like display position, define the minimum number of headings before an index is displayed, appearance, smooth scrolling, active section highlighting, sticky or floating TOC modes, floating-side placement, display top offset, mobile mode, selector-based exclusions, and more.  For power users, the advanced options cover heading inclusion, anchor formatting, custom styling, and widget-only output.  Using shortcodes, you can override default behaviour such as custom placement or hiding the table of contents on a specific piece of content.
 
-Prefer to include the index in the sidebar?  Go to Appearance > Widgets and drag the TOC+ to your desired sidebar and position.
+Prefer to include the index in the sidebar?  Go to Appearance > Widgets and drag the WPTOC+ widget to your desired sidebar and position.
 
 Custom post types are supported, however, auto insertion works only when the_content() has been used by the custom post type.  Each post type will appear in the options panel, so enable the ones you want.
 
-Collaborate, participate, fork this plugin on [Github](https://github.com/zedzedzed/table-of-contents-plus/).
+WPTOC+ is intentionally focused on table of contents features only.  This fork does not include sitemap features, does not use WordPress.org plugin detail/update flows for the fork, and does not generate TOCs in REST requests.
+
+Per-post overrides are supported through the standard WordPress post and page edit screen.  Authors can force show, force hide, or set a custom TOC title per post.  These controls may not appear inside third-party builders such as Divi, so set them in the normal editor when needed.
+
+Sticky and floating display modes are intended for desktop layouts and automatically fall back to the standard inline TOC on smaller screens.  Floating mode can be placed on either the left or right side, and both display modes support a dedicated display top offset to clear sticky theme headers.
+
+The mobile mode setting can switch the TOC into a compact expandable panel on smaller screens so readers can open it only when they need it.
+
+Selector-based exclusions let you ignore headings inside specific blocks or containers such as `.wp-block-cover`, `.et_pb_toggle`, `section.hero`, or `div.reusable-banner`.
+
+Project website: https://github.com/psydox/WPTOC-Plus
 
 
 == Screenshots ==
 
 1. An example of the table of contents, positioned at the top, right aligned, and a width of 275px
-2. An example of the sitemap_pages shortcode
-3. An example of the sitemap_posts shortcode
-4. The options panel found in Settings > TOC+
-5. Some advanced options
-6. The sitemap tab
+2. The options panel found in Settings > WPTOC+
+3. Some advanced options
+4. The options panel found in Settings > WPTOC+
+5. Table of contents output on a content page
 
 
 == Installation ==
 
-The normal plugin install process applies, that is search for `table of contents plus` from your plugin screen or via the manual method:
+The normal plugin install process applies, that is search for `WPTOC+` from your plugin screen or via the manual method:
 
-1. Upload the `table-of-contents-plus` folder into your `/wp-content/plugins/` directory
+1. Upload the `WPTOC-Plus` folder into your `/wp-content/plugins/` directory
 1. Activate the plugin through the 'Plugins' menu in WordPress
 
 That's it!  The table of contents will appear on pages with at least four or more headings.
 
-You can change the default settings and more under Settings > TOC+
+You can change the default settings and more under Settings > WPTOC+
+
+If you need per-post TOC overrides, open the content item in the standard WordPress editor and use the `WPTOC+ Overrides` meta box.
 
 
 == Shortcodes ==
 The plugin was designed to be as seamless and painfree as possible and did not require you to insert a shortcode for operation.  However, using the shortcode allows you to fully control the position of the table of contents within your page.  The following shortcodes are available with this plugin.
 
-When attributes are left out for the shortcodes below, they will fallback to the settings you defined under Settings > TOC+.  The following are detailed in the help tab.
+When attributes are left out for the shortcodes below, they will fallback to the settings you defined under Settings > WPTOC+.  The following are detailed in the help tab.
 
 = [toc] =
 Lets you generate the table of contents at the preferred position.  Useful for sites that only require a TOC on a small handful of pages.  Supports the following attributes:
@@ -62,46 +75,34 @@ Lets you generate the table of contents at the preferred position.  Useful for s
 * "wrapping": text, either "left" or "right"
 * "heading_levels": numbers, this lets you select the heading levels you want included in the table of contents.  Separate multiple levels with a comma.  Example: include headings 3, 4 and 5 but exclude the others with `heading_levels="3,4,5"`
 * "class": text, enter CSS classes to be added to the container. Separate multiple classes with a space.
+* "exclude_selectors": text, remove headings that appear inside matching containers such as `.class-name`, `#section-id`, `tag`, or `tag.class-name`. Separate multiple selectors with a pipe or comma.
 * "start": number, show when this number of headings are present in the content.
 
 = [no_toc] =
 Allows you to disable the table of contents for the current post, page, or custom post type.
 
-= [sitemap] =
-Produces a listing of all pages and categories for your site. You can use this on any post, page or even in a text widget.  Note that this will not include an index of posts so use sitemap_posts if you need this listing.
-
-= [sitemap_pages] =
-Lets you print out a listing of only pages. The following attributes are accepted:
-
-* "heading": number between 1 and 6, defines which html heading to use
-* "label": text, title of the list
-* "no_label": true/false, shows or hides the list heading
-* "exclude": IDs of the pages or categories you wish to exclude
-* "exclude_tree": ID of the page or category you wish to exclude including its all descendants
-* "child_of": "current" or page ID of the parent page. Defaults to 0 which includes all pages.
-
-= [sitemap_categories] =
-Same as `[sitemap_pages]` but for categories.
-
-= [sitemap_posts] =
-This lets you print out an index of all published posts on your site.  By default, posts are listed in alphabetical order grouped by their first letters.  The following attributes are accepted:
-
-* "order": text, either ASC or DESC
-* "orderby": text, popular options include "title", "date", "ID", and "rand". See [WP_Query](https://codex.wordpress.org/Class_Reference/WP_Query#Order_.26_Orderby_Parameters) for a list.
-* "separate": true/false (defaults to true), does not separate the lists by first letter when set to false.
-
-Use the following CSS classes to customise the appearance of your listing:
-
-* toc_sitemap_posts_section
-* toc_sitemap_posts_letter
-* toc_sitemap_posts_list
-
-
 == Credits ==
-This plugin was created and maintained for many years by conjur3r. We are grateful for all the hard work he put in and we are excited to continue to build on that!
+WPTOC+ is currently maintained by Brian V. Rosario. This fork builds on the original work by conjur3r and later contributions from All in One SEO Team, Michael Tran, smub, benjaminprojas, and other contributors.
 
 
 == Changelog ==
+= Unreleased =
+* Added active section highlighting for TOC links while scrolling
+* Added per-post TOC override controls in the standard WordPress editor
+* Added sticky sidebar and floating panel TOC display modes for desktop layouts
+* Added left or right placement for floating panel mode and improved top offset handling for fixed headers
+* Added a dedicated display top offset setting for sticky and floating modes
+* Added a compact expandable mobile TOC mode for smaller screens
+* Added selector or class based heading exclusions for specific containers and blocks
+* Removed sitemap-related functionality from this fork to keep the project TOC-focused
+* Removed several low-value legacy settings from the admin UI and cleaned their runtime paths
+* Updated the admin settings experience and save feedback
+* Switched this fork to the maintained unminified frontend assets used by the project
+
+= 2026.05.20.2338 =
+* Released: 20 May 2026
+* Switched this fork to public calendar versioning in the format YYYY.MM.DD.HHMM
+
 = 2411.1 =
 * Released: 21 November 2024
 * Security hardening reported by WPScan
@@ -154,8 +155,8 @@ This plugin was created and maintained for many years by conjur3r. We are gratef
 = 2212 =
 * Released: 16 December 2022
 * Bump tested version to 6.1.1
-* When using the TOC+ widget, execute shortcodes beforehand (props endcoreCL)
-* When using the TOC+ widget, abort early when no post for edge cases (props jonas-hoebenreich)
+* When using the WPTOC+ widget, execute shortcodes beforehand (props endcoreCL)
+* When using the WPTOC+ widget, abort early when no post for edge cases (props jonas-hoebenreich)
 * Add start property to toc shortcode to override the minimum number of headings needed to display (props woutervanvliet)
 * Add no_numbers property to toc shortcode to disable leading heading indexes (props TedAvery)
 * Fixed XSS vulnerability in toc shortcode, class property (thanks to wpscan)
@@ -181,7 +182,7 @@ This plugin was created and maintained for many years by conjur3r. We are gratef
 * Add 'enable' and 'disable' API functions so a developer can better control the execution.
 * Add Brazilian Portuguese translation thanks to Blog de Niterói
 * Add Spanish translation thanks to David Saiz
-* TOC+ widget now adheres to a blank title if none provided. Thanks to [Dirk](http://dublue.com/plugins/toc/comment-page-11/#comment-5140) for the cue.
+* WPTOC+ widget now adheres to a blank title if none provided. Thanks to [Dirk](http://dublue.com/plugins/toc/comment-page-11/#comment-5140) for the cue.
 * Updated jQuery Smooth Scroll 1.5.5 to 1.6.0
 * Updated text domain to better support translation packs.
 
@@ -196,8 +197,8 @@ This plugin was created and maintained for many years by conjur3r. We are gratef
 * Bump tested WordPress version to 4.3
 * Fixed: PHP notice introduced in WP 4.3
 * Fixed: javascript error with $.browser testing for Internet Explorer 7.
-* Plugin has moved to [GitHub](https://github.com/zedzedzed/table-of-contents-plus/) for better collaboration.
-* Help needed: preg_match_all failing with bad UTF8 characters producing no TOC. If you can help, please participate in this [issue](https://github.com/zedzedzed/table-of-contents-plus/issues/105).
+* Project is maintained on [GitHub](https://github.com/psydox/WPTOC-Plus).
+* Help needed: preg_match_all failing with bad UTF8 characters producing no TOC. If you can help, please open an issue in the project repository.
 
 = 1507 =
 * Released: 5 July 2015
@@ -223,7 +224,7 @@ This plugin was created and maintained for many years by conjur3r. We are gratef
 * Added French translation courtesy Jean-Michel Duriez
 * Empty headings are now ignored, as suggested by [archon810](http://wordpress.org/support/topic/patch-ignore-empty-tags)
 * Removed German translation, may have been machine translated, [ref](http://wordpress.org/support/topic/excluding-headlines-special-characters)
-* Fixed: Special chars in TOC+ > Settings > Exclude Headings no longer get mangled on save.  Thanks to N-Z for [reporting it](http://wordpress.org/support/topic/excluding-headlines-special-characters).
+* Fixed: Special chars in WPTOC+ > Settings > Exclude Headings no longer get mangled on save.  Thanks to N-Z for [reporting it](http://wordpress.org/support/topic/excluding-headlines-special-characters).
 
 = 1404 =
 * Released: 18 April 2014
@@ -235,16 +236,16 @@ This plugin was created and maintained for many years by conjur3r. We are gratef
 * Released: 19 February 2014
 * Added German translation courtesy Cord Peter
 * Modify toc_get_index API function to also reset minimum number of headings to 0.
-* Removing the TOC+ widget from the sidebar no longer requires you to uncheck the 'Show the table of contents only in the sidebar' option. It will be reset on removal.
+* Removing the WPTOC+ widget from the sidebar no longer requires you to uncheck the 'Show the table of contents only in the sidebar' option. It will be reset on removal.
 * Delay count of headings until disqualified have been removed. Thanks to [Simone di Saintjust](http://dublue.com/plugins/toc/comment-page-6/#comment-2190) for raising it.
-* Using the TOC+ widget, you can now limit the display to selected post types. Thanks to [Pete Markovic](http://dublue.com/plugins/toc/comment-page-6/#comment-2248) for the idea.
+* Using the WPTOC+ widget, you can now limit the display to selected post types. Thanks to [Pete Markovic](http://dublue.com/plugins/toc/comment-page-6/#comment-2248) for the idea.
 * Updated translation file (extra options added).
 
 = 1311 =
 * Released: 10 November 2013
 * Added third parameter to toc_get_index API function to enable eligibility check (eg apply minimum heading check, is post type enabled, etc). This has been switched off by default and only affects those using the API. Thanks [Jonon](http://dublue.com/plugins/toc/comment-page-5/#comment-1943) for your comment.
 * Added Dutch translation courtesy Renee
-* Apply bullet option to TOC+ widget, thanks to [Thomas Pani for the patch](http://dublue.com/plugins/toc/comment-page-5/#comment-2040).
+* Apply bullet option to WPTOC+ widget, thanks to [Thomas Pani for the patch](http://dublue.com/plugins/toc/comment-page-5/#comment-2040).
 
 = 1308 =
 * Released: 5 August 2013

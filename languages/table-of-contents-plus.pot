@@ -1,9 +1,9 @@
-# Copyright (C) 2024 Michael Tran
+# Copyright (C) 2026 Brian V. Rosario
 # This file is distributed under the GPL2.
 msgid ""
 msgstr ""
-"Project-Id-Version: Table of Contents Plus 2311\n"
-"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/table-of-contents-plus\n"
+"Project-Id-Version: WPTOC+ 2411.1\n"
+"Report-Msgid-Bugs-To: https://github.com/psydox/WPTOC-Plus\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
@@ -16,22 +16,22 @@ msgstr ""
 
 #. Plugin Name of the plugin
 #: toc.php
-msgid "Table of Contents Plus"
+msgid "WPTOC+"
 msgstr ""
 
 #. Description of the plugin
 #: toc.php
-msgid "A powerful yet user friendly plugin that automatically creates a table of contents. Can also output a sitemap listing all pages and categories."
+msgid "WPTOC+ is a fork of the original Table of Contents Plus plugin, maintained by Brian V. Rosario, that automatically creates a table of contents for long-form content."
 msgstr ""
 
 #. Author of the plugin
 #: toc.php
-msgid "Michael Tran"
+msgid "Brian V. Rosario"
 msgstr ""
 
 #. Author URI of the plugin
 #: toc.php
-msgid "http://dublue.com/"
+msgid "https://brianrosario.com"
 msgstr ""
 
 #: includes/class-toc-plus.php:147
@@ -52,11 +52,11 @@ msgid "Save failed."
 msgstr ""
 
 #: includes/class-toc-plus.php:713
-msgid "Main Options"
+msgid "Options"
 msgstr ""
 
 #: includes/class-toc-plus.php:714
-msgid "Sitemap"
+msgid "Advanced Options"
 msgstr ""
 
 #: includes/class-toc-plus.php:715
@@ -398,70 +398,6 @@ msgstr ""
 #. translators: advanced usage, %s is HTML code for <code>[toc]</code>
 #: includes/class-toc-plus.php:1095
 msgid "If you would like to fully customise the position of the table of contents, you can use the %s shortcode by placing it at the desired position of your post, page or custom post type. This method allows you to generate the table of contents despite having auto insertion disabled for its content type. Please visit the help tab for further information about this shortcode."
-msgstr ""
-
-#. translators: %s is HTML code for <code>[sitemap]</code>
-#: includes/class-toc-plus.php:1105
-msgid "At its simplest, placing %s into a page will automatically create a sitemap of all pages and categories. This also works in a text widget."
-msgstr ""
-
-#: includes/class-toc-plus.php:1109
-msgid "Show page listing"
-msgstr ""
-
-#: includes/class-toc-plus.php:1113
-msgid "Show category listing"
-msgstr ""
-
-#: includes/class-toc-plus.php:1117
-msgid "Heading type"
-msgstr ""
-
-#. translators: the full line is supposed to read - Use [1-6 drop down list] to print out the titles
-#: includes/class-toc-plus.php:1120
-msgid "Use"
-msgstr ""
-
-#. translators: the full line is supposed to read - Use [h1-h6 drop down list] to print out the titles
-#: includes/class-toc-plus.php:1133
-msgid "to print out the titles"
-msgstr ""
-
-#: includes/class-toc-plus.php:1137
-msgid "Pages label"
-msgstr ""
-
-#: includes/class-toc-plus.php:1139
-msgid "Eg: Pages, Page List"
-msgstr ""
-
-#: includes/class-toc-plus.php:1143
-msgid "Categories label"
-msgstr ""
-
-#: includes/class-toc-plus.php:1145
-msgid "Eg: Categories, Category List"
-msgstr ""
-
-#: includes/class-toc-plus.php:1151
-msgid "Advanced usage"
-msgstr ""
-
-#. translators: %s is the following HTML code <code>[sitemap_categories]</code>
-#: includes/class-toc-plus.php:1155
-msgid "lets you print out a listing of only pages. Similarly %s can be used to print out a category listing. They both can accept a number of attributes so visit the help tab for more information."
-msgstr ""
-
-#: includes/class-toc-plus.php:1156
-msgid "Examples"
-msgstr ""
-
-#: includes/class-toc-plus.php:1158
-msgid "hides the heading from a category listing"
-msgstr ""
-
-#: includes/class-toc-plus.php:1159
-msgid "Uses h6 to display <em>This is an awesome listing</em> on a page listing excluding pages with IDs 1 and 15"
 msgstr ""
 
 #: includes/class-toc-plus.php:1168

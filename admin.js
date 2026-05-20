@@ -1,5 +1,8 @@
 jQuery(document).ready(function($) {
-	$('.tab_content, #toc_advanced_usage, #sitemap_advanced_usage, #toc_for_developers, div.more_toc_options.disabled, tr.disabled').hide();
+	var $adminForm = $('form.wptoc-admin-form');
+	var $successAlert = $('.wptoc-admin-alert.is-success');
+
+	$('.tab_content, #toc_for_developers, div.more_toc_options.disabled, tr.disabled').hide();
 	$('ul#tabbed-nav li:first').addClass('active').show(); // show first tab
 	$('.tab_content:first').show(); // show first tab content
 
@@ -13,15 +16,6 @@ jQuery(document).ready(function($) {
 			var activeTab = $(this).find('a').attr('href');
 			$(activeTab).fadeIn();
 		}
-	});
-	
-	$('h3 span.show_hide a').click(function(event) {
-		event.preventDefault();
-		$( $(this).attr('href') ).toggle('fast');
-		if ( $(this).text() == 'show' )
-			$(this).text('hide');
-		else
-			$(this).text('show');
 	});
 	
 	$('input#show_heading_text, input#visibility').click(function() {
@@ -50,14 +44,35 @@ jQuery(document).ready(function($) {
 		else
 			$(this).siblings('div.more_toc_options').hide('fast');
 	});
-	$('input#width_custom, input#font_size, input#smooth_scroll_offset').keyup(function() {
+	$('input#width_custom, input#font_size, input#smooth_scroll_offset, input#display_top_offset').keyup(function() {
 		var value = $(this).val();
 		$(this).val( value.replace(/[^0-9\.]/, '') );
 	});
-	$('input#fragment_prefix').keyup(function() {
-		var fragment = $(this).val();
-		$(this).val( fragment.replace(/[^a-zA-Z0-9_\-]/g, '') );
+
+	$adminForm.on('submit', function() {
+		var $form = $(this);
+		var $submit = $form.find('.wptoc-admin-submit .button-primary');
+		var originalLabel = $submit.data('original-label');
+
+		if ( ! originalLabel ) {
+			$submit.data('original-label', $submit.val());
+		}
+
+		if ( $form.hasClass('is-saving') ) {
+			return false;
+		}
+
+		$form.addClass('is-saving');
+		$submit.prop('disabled', true).val('Saving...');
 	});
+
+	if ( $successAlert.length ) {
+		window.setTimeout(function() {
+			$successAlert.slideUp(220, function() {
+				$(this).remove();
+			});
+		}, 2600);
+	}
 	
 	if ( $.farbtastic ) {
 		var f = $.farbtastic('#farbtastic_colour_wheel');

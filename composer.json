@@ -1,9 +1,10 @@
 {
-    "name": "dublue/table-of-contents-plus",
+    "name": "brianvrosario/wptoc-plus",
     "type": "wordpress-plugin",
     "authors": [
         {
-            "name": "Michael Tran"
+            "name": "Brian V. Rosario",
+            "homepage": "https://github.com/psydox/WPTOC-Plus"
         }
     ],
     "config": {

@@ -3,18 +3,25 @@
 	padding:0;
 }
 
-#toc_container.no_bullets ul,
-#toc_container.no_bullets li,
-#toc_container.no_bullets ul li,
-.toc_widget_list.no_bullets,
-.toc_widget_list.no_bullets li {
+/* Keep theme decoration layers from sitting on top of TOC links. */
+#toc_container ul,
+#toc_container li {
+	position:relative;
+	overflow:visible;
+}
+
+#toc_container li::before,
+#toc_container li::after {
+	pointer-events:none;
+}
+
+#toc_container ul,
+#toc_container li,
+.toc_widget_list,
+.toc_widget_list li {
 	background:none;
 	list-style-type:none;
 	list-style:none;
-}
-
-#toc_container.have_bullets li {
-	padding-left:12px;
 }
 
 #toc_container ul ul {
@@ -26,6 +33,7 @@
 	border:1px solid #aaa;
 	padding:10px;
 	margin-bottom:1em;
+	--wptoc-display-top:24px;
 	width:auto;
 	display:table;
 	font-size:95%;
@@ -67,6 +75,35 @@
 	margin-top:1em;
 }
 
+#toc_container .toc_mobile_toggle {
+	display:none;
+	width:100%;
+	border:0;
+	background:#0f766e;
+	color:#fff;
+	padding:12px 14px;
+	border-radius:14px;
+	font:inherit;
+	font-weight:700;
+	text-align:left;
+	align-items:center;
+	justify-content:space-between;
+	gap:12px;
+	cursor:pointer;
+	box-shadow:0 12px 24px rgba(15, 118, 110, 0.18);
+}
+
+#toc_container .toc_mobile_toggle_icon::before {
+	content:'+';
+	display:inline-block;
+	font-size:1.2em;
+	line-height:1;
+}
+
+#toc_container.is-mobile-open .toc_mobile_toggle_icon::before {
+	content:'-';
+}
+
 .toc_wrap_left {
 	float:left;
 	margin-right:10px;
@@ -77,18 +114,160 @@
 	margin-left:10px;
 }
 
+@media (min-width: 1100px) {
+	#toc_container.toc_display_sticky {
+		position:sticky;
+		top:var(--wptoc-display-top);
+		z-index:15;
+		float:none;
+		display:block;
+		width:min(320px, 100%);
+		max-height:calc(100vh - var(--wptoc-display-top) - 24px);
+		overflow:auto;
+		overscroll-behavior:contain;
+		margin-top:0;
+		box-shadow:0 16px 30px rgba(12, 26, 38, 0.08);
+	}
+
+	#toc_container.toc_display_sticky.is-sticky-fixed {
+		position:fixed;
+	}
+
+	#toc_container.toc_display_sticky.is-sticky-bottom {
+		position:absolute;
+		top:auto;
+	}
+
+	#toc_container.toc_display_sticky.toc_wrap_right {
+		margin-left:auto;
+		margin-right:0;
+	}
+
+	#toc_container.toc_display_sticky.toc_wrap_left {
+		margin-left:0;
+		margin-right:auto;
+	}
+
+	#toc_container.toc_display_floating {
+		position:fixed;
+		top:var(--wptoc-display-top);
+		z-index:40;
+		float:none;
+		margin:0;
+		display:block;
+		width:min(320px, calc(100vw - 48px));
+		max-width:calc(100vw - 48px);
+		max-height:calc(100vh - var(--wptoc-display-top) - 24px);
+		overflow:auto;
+		overscroll-behavior:contain;
+		border-radius:16px;
+		box-shadow:0 22px 50px rgba(12, 26, 38, 0.18);
+	}
+
+	#toc_container.toc_display_floating.toc_floating_right {
+		right:24px;
+		left:auto;
+	}
+
+	#toc_container.toc_display_floating.toc_floating_left {
+		left:24px;
+		right:auto;
+	}
+
+	#toc_container.toc_display_floating.toc_wrap_left,
+	#toc_container.toc_display_floating.toc_wrap_right {
+		margin:0;
+	}
+}
+
+@media (max-width: 1099px) {
+	#toc_container.toc_display_sticky,
+	#toc_container.toc_display_floating {
+		position:static;
+		float:none;
+		display:table;
+		width:auto;
+		max-height:none;
+		overflow:visible;
+		box-shadow:none;
+	}
+
+	#toc_container.toc_display_sticky.is-sticky-fixed,
+	#toc_container.toc_display_sticky.is-sticky-bottom {
+		position:static;
+		left:auto;
+		right:auto;
+		bottom:auto;
+	}
+}
+
+@media (max-width: 782px) {
+	#toc_container.toc_mobile_compact {
+		display:block;
+		float:none;
+		width:100%;
+		max-width:100%;
+		margin:0 0 1rem;
+		padding:12px;
+		border-radius:18px;
+		box-shadow:0 16px 30px rgba(12, 26, 38, 0.08);
+	}
+
+	#toc_container.toc_mobile_compact .toc_mobile_toggle {
+		display:flex;
+	}
+
+	#toc_container.toc_mobile_compact p.toc_title {
+		display:none;
+	}
+
+	#toc_container.toc_mobile_compact ul.toc_list {
+		margin-top:12px;
+		padding-top:10px;
+		border-top:1px solid rgba(12, 26, 38, 0.1);
+	}
+
+	#toc_container.toc_mobile_compact li.is-active > a {
+		display:block;
+	}
+}
+
 #toc_container a {
 	text-decoration:none;
 	text-shadow:none;
+	position:relative;
+	z-index:2;
+	display:inline-block;
+	cursor:pointer;
+	pointer-events:auto;
 }
 
 #toc_container a:hover {
 	text-decoration:underline;
 }
 
-.toc_sitemap_posts_letter {
-	font-size:1.5em;
-	font-style:italic;
+#toc_container li.is-active > a,
+#toc_container a.is-active-link {
+	color:#0f766e;
+	font-weight:700;
+	text-decoration:none;
+}
+
+#toc_container li.is-active > a {
+	background:rgba(15, 118, 110, 0.1);
+	border-radius:8px;
+	padding:2px 6px;
+	margin:-2px -6px;
+}
+
+#toc_container li.is-active-parent > a {
+	color:#24536a;
+}
+
+#toc_container.toc_black li.is-active > a,
+#toc_container.toc_black a.is-active-link {
+	color:#8ef2e8;
+	background:rgba(142, 242, 232, 0.12);
 }
 
 /* XTEC ************ AFEGIT - Hidden borders. It is necessary change into screen.min.css. */

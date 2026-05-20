@@ -9,6 +9,8 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 		private $exclude_post_types;
 		private $collision_collector;  // keeps a track of used anchors for collision detecting
 		private $defaults;
+		private $post_override_meta_key = '_wptoc_plus_override';
+		private $post_heading_meta_key  = '_wptoc_plus_heading_text';
 
 		public function __construct() {
 			$this->show_toc            = true;
@@ -17,8 +19,6 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 
 			// get options
 			$this->defaults = [  // default options
-				'fragment_prefix'                    => 'i',
-
 				// XTEC ************ MODIFICAT - Change default settings
 				// 2017.05.04 @xaviernietosanchez
 				'position' => TOC_POSITION_TOP,
@@ -68,6 +68,11 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 				'visibility_show'                    => 'show',
 				'visibility_hide'                    => 'hide',
 				'visibility_hide_by_default'         => false,
+				'display_mode'                       => 'inline',
+				'mobile_mode'                        => 'inline',
+				'floating_side'                      => 'right',
+				'display_top_offset'                 => 96,
+				'exclude_selectors'                  => '',
 				'width'                              => 'Auto',
 				'width_custom'                       => '275',
 				'width_custom_units'                 => 'px',
@@ -92,30 +97,13 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 				'custom_links_visited_colour'        => TOC_DEFAULT_LINKS_VISITED_COLOUR,
 				'lowercase'                          => false,
 				'hyphenate'                          => false,
-				'bullet_spacing'                     => false,
-				'include_homepage'                   => false,
 				'exclude_css'                        => false,
 				'exclude'                            => '',
 				'heading_levels'                     => [ 1, 2, 3, 4, 5, 6 ],
 
-				// XTEC ************ MODIFICAT - Change default settings
-				// 2019.03.08 @nacho
-				'restrict_path' => '/docs/,/nodes/',
-				// ************ ORIGINAL
-				/*
-				'restrict_path'                      => '',
-				*/
-				// ************ FI
-
 				'css_container_class'                => '',
-				'sitemap_show_page_listing'          => true,
-				'sitemap_show_category_listing'      => true,
-				'sitemap_heading_type'               => 3,
-				'sitemap_pages'                      => 'Pages',
-				'sitemap_categories'                 => 'Categories',
 				'show_toc_in_widget_only'            => false,
 				'show_toc_in_widget_only_post_types' => [ 'page' ],
-				'rest_toc_output'                    => false,
 			];
 
 			$options       = get_option( 'toc-options', $this->defaults );
@@ -125,20 +113,24 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 			add_action( 'wp_enqueue_scripts', [ $this, 'wp_enqueue_scripts' ] );
 			add_action( 'admin_init', [ $this, 'admin_init' ] );
 			add_action( 'admin_menu', [ $this, 'admin_menu' ] );
+			add_action( 'add_meta_boxes', [ $this, 'add_meta_boxes' ] );
+			add_action( 'save_post', [ $this, 'save_post_meta' ] );
 			add_action( 'widgets_init', [ $this, 'widgets_init' ] );
 			add_action( 'delete_widget', [ $this, 'sidebar_admin_setup' ], 10, 3 );
 			add_action( 'init', [ $this, 'init' ] );
+			add_action( 'admin_footer-plugins.php', [ $this, 'admin_footer_plugins' ] );
 
 			add_filter( 'the_content', [ $this, 'the_content' ], 100 );  // run after shortcodes are interpreted (level 10)
+			add_filter( 'all_plugins', [ $this, 'all_plugins' ] );
 			add_filter( 'plugin_action_links', [ $this, 'plugin_action_links' ], 10, 2 );
+			add_filter( 'plugin_row_meta', [ $this, 'plugin_row_meta' ], 10, 4 );
+			add_filter( 'plugins_api', [ $this, 'plugins_api' ], 10, 3 );
+			add_filter( 'site_transient_update_plugins', [ $this, 'site_transient_update_plugins' ] );
+			add_filter( 'pre_set_site_transient_update_plugins', [ $this, 'site_transient_update_plugins' ] );
 			add_filter( 'widget_text', 'do_shortcode' );
 
 			add_shortcode( 'toc', [ $this, 'shortcode_toc' ] );
 			add_shortcode( 'no_toc', [ $this, 'shortcode_no_toc' ] );
-			add_shortcode( 'sitemap', [ $this, 'shortcode_sitemap' ] );
-			add_shortcode( 'sitemap_pages', [ $this, 'shortcode_sitemap_pages' ] );
-			add_shortcode( 'sitemap_categories', [ $this, 'shortcode_sitemap_categories' ] );
-			add_shortcode( 'sitemap_posts', [ $this, 'shortcode_sitemap_posts' ] );
 		}
 
 
@@ -198,12 +190,242 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 		}
 
 
+		private function get_supported_post_types() {
+			return array_values(
+				array_filter(
+					get_post_types( [ 'show_ui' => true ], 'names' ),
+					function ( $post_type ) {
+						return ! in_array( $post_type, $this->exclude_post_types, true );
+					}
+				)
+			);
+		}
+
+
+		private function get_current_post() {
+			global $post;
+
+			if ( $post instanceof WP_Post ) {
+				return $post;
+			}
+
+			$post_id = get_the_ID();
+			if ( $post_id ) {
+				return get_post( $post_id );
+			}
+
+			return null;
+		}
+
+
+		private function get_post_override( $post = null ) {
+			if ( ! $post instanceof WP_Post ) {
+				$post = $this->get_current_post();
+			}
+
+			if ( ! $post instanceof WP_Post ) {
+				return 'default';
+			}
+
+			$override = get_post_meta( $post->ID, $this->post_override_meta_key, true );
+
+			if ( ! in_array( $override, [ 'default', 'show', 'hide' ], true ) ) {
+				return 'default';
+			}
+
+			return $override;
+		}
+
+
+		private function get_post_heading_text( $post = null ) {
+			if ( ! $post instanceof WP_Post ) {
+				$post = $this->get_current_post();
+			}
+
+			if ( ! $post instanceof WP_Post ) {
+				return '';
+			}
+
+			return trim( (string) get_post_meta( $post->ID, $this->post_heading_meta_key, true ) );
+		}
+
+
+		private function get_effective_heading_text( $post = null ) {
+			$heading_text = $this->get_post_heading_text( $post );
+
+			if ( '' !== $heading_text ) {
+				return $heading_text;
+			}
+
+			return $this->options['heading_text'];
+		}
+
+
+		public function add_meta_boxes() {
+			foreach ( $this->get_supported_post_types() as $post_type ) {
+				add_meta_box(
+					'wptoc-plus-overrides',
+					__( 'WPTOC+ Overrides', 'table-of-contents-plus' ),
+					[ $this, 'render_post_meta_box' ],
+					$post_type,
+					'side',
+					'default'
+				);
+			}
+		}
+
+
+		public function render_post_meta_box( $post ) {
+			$override     = $this->get_post_override( $post );
+			$heading_text = $this->get_post_heading_text( $post );
+
+			wp_nonce_field( 'wptoc_plus_post_meta', 'wptoc_plus_post_meta_nonce' );
+			?>
+			<p>
+				<label for="wptoc-plus-override"><strong><?php esc_html_e( 'TOC display', 'table-of-contents-plus' ); ?></strong></label>
+				<select id="wptoc-plus-override" name="wptoc_plus_override" class="widefat">
+					<option value="default"<?php selected( $override, 'default' ); ?>><?php esc_html_e( 'Use global settings', 'table-of-contents-plus' ); ?></option>
+					<option value="show"<?php selected( $override, 'show' ); ?>><?php esc_html_e( 'Force show TOC', 'table-of-contents-plus' ); ?></option>
+					<option value="hide"<?php selected( $override, 'hide' ); ?>><?php esc_html_e( 'Force hide TOC', 'table-of-contents-plus' ); ?></option>
+				</select>
+			</p>
+			<p>
+				<label for="wptoc-plus-heading-text"><strong><?php esc_html_e( 'Custom TOC title', 'table-of-contents-plus' ); ?></strong></label>
+				<input type="text" id="wptoc-plus-heading-text" name="wptoc_plus_heading_text" class="widefat" value="<?php echo esc_attr( $heading_text ); ?>" />
+			</p>
+			<p class="description"><?php esc_html_e( 'Override the TOC visibility or title for this post only.', 'table-of-contents-plus' ); ?></p>
+			<?php
+		}
+
+
+		public function save_post_meta( $post_id ) {
+			if ( ! isset( $_POST['wptoc_plus_post_meta_nonce'] ) ) {
+				return;
+			}
+
+			if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['wptoc_plus_post_meta_nonce'] ) ), 'wptoc_plus_post_meta' ) ) {
+				return;
+			}
+
+			if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+				return;
+			}
+
+			if ( wp_is_post_revision( $post_id ) ) {
+				return;
+			}
+
+			if ( ! current_user_can( 'edit_post', $post_id ) ) {
+				return;
+			}
+
+			$override = isset( $_POST['wptoc_plus_override'] ) ? sanitize_text_field( wp_unslash( $_POST['wptoc_plus_override'] ) ) : 'default';
+			$title    = isset( $_POST['wptoc_plus_heading_text'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['wptoc_plus_heading_text'] ) ) ) : '';
+
+			if ( ! in_array( $override, [ 'default', 'show', 'hide' ], true ) ) {
+				$override = 'default';
+			}
+
+			if ( 'default' === $override ) {
+				delete_post_meta( $post_id, $this->post_override_meta_key );
+			} else {
+				update_post_meta( $post_id, $this->post_override_meta_key, $override );
+			}
+
+			if ( '' === $title ) {
+				delete_post_meta( $post_id, $this->post_heading_meta_key );
+			} else {
+				update_post_meta( $post_id, $this->post_heading_meta_key, $title );
+			}
+		}
+
+
 		public function plugin_action_links( $links, $file ) {
-			if ( 'table-of-contents-plus/toc.php' === $file ) {
+			if ( plugin_basename( dirname( __DIR__ ) . '/toc.php' ) === $file ) {
 				$settings_link = '<a href="options-general.php?page=toc">' . __( 'Settings', 'table-of-contents-plus' ) . '</a>';
 				$links         = array_merge( [ $settings_link ], $links );
 			}
 			return $links;
+		}
+
+
+		public function all_plugins( $plugins ) {
+			$plugin_file = plugin_basename( dirname( __DIR__ ) . '/toc.php' );
+
+			if ( ! isset( $plugins[ $plugin_file ] ) || ! is_array( $plugins[ $plugin_file ] ) ) {
+				return $plugins;
+			}
+
+			unset( $plugins[ $plugin_file ]['slug'] );
+			unset( $plugins[ $plugin_file ]['update'] );
+			$plugins[ $plugin_file ]['update-supported'] = false;
+
+			return $plugins;
+		}
+
+
+		public function plugin_row_meta( $plugin_meta, $plugin_file, $plugin_data, $status ) {
+			if ( plugin_basename( dirname( __DIR__ ) . '/toc.php' ) !== $plugin_file ) {
+				return $plugin_meta;
+			}
+
+			foreach ( $plugin_meta as $index => $meta_link ) {
+				if (
+					false !== strpos( $meta_link, 'plugin-install.php?tab=plugin-information' ) ||
+					false !== strpos( $meta_link, 'wordpress.org/plugins/' )
+				) {
+					unset( $plugin_meta[ $index ] );
+				}
+			}
+
+			return array_values( $plugin_meta );
+		}
+
+
+		public function plugins_api( $result, $action, $args ) {
+			if ( 'plugin_information' !== $action || ! is_object( $args ) || empty( $args->slug ) ) {
+				return $result;
+			}
+
+			if ( 'table-of-contents-plus' !== $args->slug ) {
+				return $result;
+			}
+
+			return new WP_Error( 'plugins_api_failed', __( 'Plugin details are not available for this fork.', 'table-of-contents-plus' ) );
+		}
+
+
+		public function site_transient_update_plugins( $transient ) {
+			if ( ! is_object( $transient ) ) {
+				return $transient;
+			}
+
+			$plugin_file = plugin_basename( dirname( __DIR__ ) . '/toc.php' );
+
+			if ( isset( $transient->response[ $plugin_file ] ) ) {
+				unset( $transient->response[ $plugin_file ] );
+			}
+
+			if ( isset( $transient->no_update[ $plugin_file ] ) ) {
+				unset( $transient->no_update[ $plugin_file ] );
+			}
+
+			return $transient;
+		}
+
+
+		public function admin_footer_plugins() {
+			$plugin_slug = 'table-of-contents-plus';
+			?>
+<script>
+jQuery(function($) {
+	const pluginSlug = <?php echo wp_json_encode( $plugin_slug ); ?>;
+	$('a.thickbox[href*="plugin-install.php?tab=plugin-information"]').filter(function() {
+		return $(this).attr('href').indexOf('plugin=' + pluginSlug) !== -1;
+	}).remove();
+});
+</script>
+			<?php
 		}
 
 
@@ -218,6 +440,7 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 					'wrapping'       => $this->options['wrapping'],
 					'heading_levels' => $this->options['heading_levels'],
 					'exclude'        => $this->options['exclude'],
+					'exclude_selectors' => $this->options['exclude_selectors'],
 					'collapse'       => false,
 					'no_numbers'     => false,
 					'start'          => $this->options['start'],
@@ -261,6 +484,9 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 
 			if ( $atts['exclude'] ) {
 				$this->options['exclude'] = $atts['exclude'];
+			}
+			if ( $atts['exclude_selectors'] ) {
+				$this->options['exclude_selectors'] = $atts['exclude_selectors'];
 			}
 			if ( $atts['collapse'] ) {
 				$this->options['visibility_hide_by_default'] = true;
@@ -317,200 +543,14 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 		}
 
 
-		public function shortcode_sitemap( $atts ) {
-			$html = '';
-
-			// only do the following if enabled
-			if ( $this->options['sitemap_show_page_listing'] || $this->options['sitemap_show_category_listing'] ) {
-				$html = '<div class="toc_sitemap">';
-				if ( $this->options['sitemap_show_page_listing'] ) {
-					$html .=
-						'<h' . $this->options['sitemap_heading_type'] . ' class="toc_sitemap_pages">' . htmlentities( $this->options['sitemap_pages'], ENT_COMPAT, 'UTF-8' ) . '</h' . $this->options['sitemap_heading_type'] . '>' .
-						'<ul class="toc_sitemap_pages_list">' .
-							wp_list_pages(
-								[
-									'title_li' => '',
-									'echo'     => false,
-								]
-							) .
-						'</ul>';
-				}
-				if ( $this->options['sitemap_show_category_listing'] ) {
-					$html .=
-						'<h' . $this->options['sitemap_heading_type'] . ' class="toc_sitemap_categories">' . htmlentities( $this->options['sitemap_categories'], ENT_COMPAT, 'UTF-8' ) . '</h' . $this->options['sitemap_heading_type'] . '>' .
-						'<ul class="toc_sitemap_categories_list">' .
-							wp_list_categories(
-								[
-									'title_li' => '',
-									'echo'     => false,
-								]
-							) .
-						'</ul>';
-				}
-				$html .= '</div>';
-			}
-
-			return $html;
-		}
-
-
-		public function shortcode_sitemap_pages( $attributes ) {
-			$atts = shortcode_atts(
-				[
-					'heading'      => $this->options['sitemap_heading_type'],
-					'label'        => $this->options['sitemap_pages'],
-					'no_label'     => false,
-					'exclude'      => '',
-					'exclude_tree' => '',
-					'child_of'     => 0,
-				],
-				$attributes
-			);
-
-			$atts['heading'] = intval( $atts['heading'] );  // make sure it's an integer
-
-			if ( $atts['heading'] < 1 || $atts['heading'] > 6 ) {  // h1 to h6 are valid
-				$atts['heading'] = $this->options['sitemap_heading_type'];
-			}
-
-			if ( 'current' === strtolower( $atts['child_of'] ) ) {
-				$atts['child_of'] = get_the_ID();
-			} elseif ( is_numeric( $atts['child_of'] ) ) {
-				$atts['child_of'] = intval( $atts['child_of'] );
-			} else {
-				$atts['child_of'] = 0;
-			}
-
-			$html = '<div class="toc_sitemap">';
-			if ( ! $atts['no_label'] ) {
-				$html .= '<h' . $atts['heading'] . ' class="toc_sitemap_pages">' . htmlentities( $atts['label'], ENT_COMPAT, 'UTF-8' ) . '</h' . $atts['heading'] . '>';
-			}
-			$html .=
-					'<ul class="toc_sitemap_pages_list">' .
-						wp_list_pages(
-							[
-								'title_li'     => '',
-								'echo'         => false,
-								'exclude'      => $atts['exclude'],
-								'exclude_tree' => $atts['exclude_tree'],
-								'hierarchical' => true,
-								'child_of'     => $atts['child_of'],
-							]
-						) .
-					'</ul>' .
-				'</div>';
-
-			return $html;
-		}
-
-
-		public function shortcode_sitemap_categories( $attributes ) {
-			$atts = shortcode_atts(
-				[
-					'heading'      => $this->options['sitemap_heading_type'],
-					'label'        => $this->options['sitemap_categories'],
-					'no_label'     => false,
-					'exclude'      => '',
-					'exclude_tree' => '',
-				],
-				$attributes
-			);
-
-			$atts['heading'] = intval( $atts['heading'] );  // make sure it's an integer
-
-			if ( $atts['heading'] < 1 || $atts['heading'] > 6 ) {  // h1 to h6 are valid
-				$atts['heading'] = $this->options['sitemap_heading_type'];
-			}
-
-			$html = '<div class="toc_sitemap">';
-			if ( ! $atts['no_label'] ) {
-				$html .= '<h' . $atts['heading'] . ' class="toc_sitemap_categories">' . htmlentities( $atts['label'], ENT_COMPAT, 'UTF-8' ) . '</h' . $atts['heading'] . '>';
-			}
-			$html .=
-					'<ul class="toc_sitemap_categories_list">' .
-						wp_list_categories(
-							[
-								'title_li'     => '',
-								'echo'         => false,
-								'exclude'      => $atts['exclude'],
-								'exclude_tree' => $atts['exclude_tree'],
-							]
-						) .
-					'</ul>' .
-				'</div>';
-
-			return $html;
-		}
-
-
-		public function shortcode_sitemap_posts( $attributes ) {
-			$atts = shortcode_atts(
-				[
-					'order'    => 'ASC',
-					'orderby'  => 'title',
-					'separate' => true,
-				],
-				$attributes
-			);
-
-			$articles = new WP_Query(
-				[
-					'post_type'      => 'post',
-					'post_status'    => 'publish',
-					'order'          => $atts['order'],
-					'orderby'        => $atts['orderby'],
-					'posts_per_page' => -1,
-				]
-			);
-
-			$html   = '';
-			$letter = '';
-
-			$atts['separate'] = strtolower( $atts['separate'] );
-			if ( 'false' === $atts['separate'] || 'no' === $atts['separate'] ) {
-				$atts['separate'] = false;
-			}
-
-			while ( $articles->have_posts() ) {
-				$articles->the_post();
-				$title = wp_strip_all_tags( get_the_title() );
-
-				if ( $atts['separate'] ) {
-					if ( strtolower( $title[0] ) !== $letter ) {
-						if ( $letter ) {
-							$html .= '</ul></div>';
-						}
-
-						$html  .= '<div class="toc_sitemap_posts_section"><p class="toc_sitemap_posts_letter">' . strtolower( $title[0] ) . '</p><ul class="toc_sitemap_posts_list">';
-						$letter = strtolower( $title[0] );
-					}
-				}
-
-				$html .= '<li><a href="' . get_permalink( $articles->post->ID ) . '">' . $title . '</a></li>';
-			}
-
-			if ( $html ) {
-				if ( $atts['separate'] ) {
-					$html .= '</div>';
-				} else {
-					$html = '<div class="toc_sitemap_posts_section"><ul class="toc_sitemap_posts_list">' . $html . '</ul></div>';
-				}
-			}
-
-			wp_reset_postdata();
-
-			return $html;
-		}
-
-
 		/**
 		 * Register and load CSS and javascript files for frontend.
 		 */
 		public function wp_enqueue_scripts() {
 			$js_vars = [];
 
-			wp_register_style( 'toc-screen', TOC_PLUGIN_PATH . '/screen.min.css', [], TOC_VERSION );
-			wp_register_script( 'toc-front', TOC_PLUGIN_PATH . '/front.min.js', [ 'jquery' ], TOC_VERSION, true );
+			wp_register_style( 'toc-screen', TOC_PLUGIN_PATH . '/screen.css', [], TOC_VERSION );
+			wp_register_script( 'toc-front', TOC_PLUGIN_PATH . '/front.js', [ 'jquery' ], TOC_VERSION, true );
 
 			// enqueue them!
 			if ( ! $this->options['exclude_css'] ) {
@@ -539,6 +579,9 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 			if ( TOC_SMOOTH_SCROLL_OFFSET !== $this->options['smooth_scroll_offset'] ) {
 				$js_vars['smooth_scroll_offset'] = esc_js( $this->options['smooth_scroll_offset'] );
 			}
+			if ( $this->defaults['display_top_offset'] !== $this->options['display_top_offset'] ) {
+				$js_vars['display_top_offset'] = esc_js( $this->options['display_top_offset'] );
+			}
 
 			if ( count( $js_vars ) > 0 ) {
 				wp_localize_script(
@@ -564,8 +607,8 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 		public function admin_menu() {
 			$page = add_submenu_page(
 				'options-general.php',
-				__( 'TOC', 'table-of-contents-plus' ) . '+',
-				__( 'TOC', 'table-of-contents-plus' ) . '+',
+				__( 'WPTOC+', 'table-of-contents-plus' ),
+				__( 'WPTOC+', 'table-of-contents-plus' ),
 				'manage_options',
 				'toc',
 				[ $this, 'admin_options' ]
@@ -602,7 +645,7 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 				add_filter(
 					'rank_math/researches/toc_plugins',
 					function ( $toc_plugins ) {
-						$toc_plugins['table-of-contents-plus/toc.php'] = 'Table of Contents Plus';
+						$toc_plugins[ plugin_basename( dirname( __DIR__ ) . '/toc.php' ) ] = 'WPTOC+';
 						return $toc_plugins;
 					}
 				);
@@ -681,16 +724,6 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 			$custom_links_hover_colour   = ! empty( $_POST['custom_links_hover_colour'] ) ? $this->hex_value( trim( wp_unslash( $_POST['custom_links_hover_colour'] ) ), TOC_DEFAULT_LINKS_HOVER_COLOUR ) : TOC_DEFAULT_LINKS_HOVER_COLOUR; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 			$custom_links_visited_colour = ! empty( $_POST['custom_links_visited_colour'] ) ? $this->hex_value( trim( wp_unslash( $_POST['custom_links_visited_colour'] ) ), TOC_DEFAULT_LINKS_VISITED_COLOUR ) : TOC_DEFAULT_LINKS_VISITED_COLOUR; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
-			$restrict_path = ! empty( $_POST['restrict_path'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['restrict_path'] ) ) ) : '';
-
-			if ( $restrict_path ) {
-				if ( strpos( $restrict_path, '/' ) !== 0 ) {
-					// restrict path did not start with a / so unset it
-					$restrict_path = '';
-				}
-			}
-
-			$fragment_prefix               = isset( $_POST['fragment_prefix'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['fragment_prefix'] ) ) ) : $this->defaults['fragment_prefix'];
 			$position                      = isset( $_POST['position'] ) ? intval( $_POST['position'] ) : $this->defaults['position'];
 			$start                         = isset( $_POST['start'] ) ? intval( $_POST['start'] ) : $this->defaults['start'];
 			$show_heading_text             = isset( $_POST['show_heading_text'] ) && (bool) $_POST['show_heading_text'];
@@ -704,6 +737,11 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 			$visibility_show               = isset( $_POST['visibility_show'] ) ? stripslashes( trim( sanitize_text_field( wp_unslash( $_POST['visibility_show'] ) ) ) ) : $this->defaults['visibility_show'];
 			$visibility_hide               = isset( $_POST['visibility_hide'] ) ? stripslashes( trim( sanitize_text_field( wp_unslash( $_POST['visibility_hide'] ) ) ) ) : $this->defaults['visibility_hide'];
 			$visibility_hide_by_default    = isset( $_POST['visibility_hide_by_default'] ) && (bool) $_POST['visibility_hide_by_default'];
+			$display_mode                  = isset( $_POST['display_mode'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['display_mode'] ) ) ) : $this->defaults['display_mode'];
+			$mobile_mode                   = isset( $_POST['mobile_mode'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['mobile_mode'] ) ) ) : $this->defaults['mobile_mode'];
+			$floating_side                 = isset( $_POST['floating_side'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['floating_side'] ) ) ) : $this->defaults['floating_side'];
+			$display_top_offset            = isset( $_POST['display_top_offset'] ) ? max( 0, intval( $_POST['display_top_offset'] ) ) : $this->defaults['display_top_offset'];
+			$exclude_selectors             = isset( $_POST['exclude_selectors'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['exclude_selectors'] ) ) ) : $this->defaults['exclude_selectors'];
 			$width                         = isset( $_POST['width'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['width'] ) ) ) : $this->defaults['width'];
 			$width_custom                  = isset( $_POST['width_custom'] ) ? floatval( $_POST['width_custom'] ) : $this->defaults['width_custom'];
 			$width_custom_units            = isset( $_POST['width_custom_units'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['width_custom_units'] ) ) ) : $this->defaults['width_custom_units'];
@@ -713,22 +751,25 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 			$theme                         = isset( $_POST['theme'] ) ? intval( $_POST['theme'] ) : $this->defaults['theme'];
 			$lowercase                     = isset( $_POST['lowercase'] ) && (bool) $_POST['lowercase'];
 			$hyphenate                     = isset( $_POST['hyphenate'] ) && (bool) $_POST['hyphenate'];
-			$bullet_spacing                = isset( $_POST['bullet_spacing'] ) && (bool) $_POST['bullet_spacing'];
-			$include_homepage              = isset( $_POST['include_homepage'] ) && (bool) $_POST['include_homepage'];
 			$exclude_css                   = isset( $_POST['exclude_css'] ) && (bool) $_POST['exclude_css'];
 			$heading_levels                = isset( $_POST['heading_levels'] ) ? array_map( 'intval', (array) $_POST['heading_levels'] ) : [];
 			$exclude                       = isset( $_POST['exclude'] ) ? stripslashes( trim( sanitize_text_field( wp_unslash( $_POST['exclude'] ) ) ) ) : $this->defaults['exclude'];
-			$sitemap_show_page_listing     = isset( $_POST['sitemap_show_page_listing'] ) && (bool) $_POST['sitemap_show_page_listing'];
-			$sitemap_show_category_listing = isset( $_POST['sitemap_show_category_listing'] ) && (bool) $_POST['sitemap_show_category_listing'];
-			$sitemap_heading_type          = isset( $_POST['sitemap_heading_type'] ) ? intval( $_POST['sitemap_heading_type'] ) : $this->defaults['sitemap_heading_type'];
-			$sitemap_pages                 = isset( $_POST['sitemap_pages'] ) ? stripslashes( trim( sanitize_text_field( wp_unslash( $_POST['sitemap_pages'] ) ) ) ) : $this->defaults['sitemap_pages'];
-			$sitemap_categories            = isset( $_POST['sitemap_categories'] ) ? stripslashes( trim( sanitize_text_field( wp_unslash( $_POST['sitemap_categories'] ) ) ) ) : $this->defaults['sitemap_categories'];
-			$rest_toc_output               = isset( $_POST['rest_toc_output'] ) && (bool) $_POST['rest_toc_output'];
+
+			if ( ! in_array( $display_mode, [ 'inline', 'sticky', 'floating' ], true ) ) {
+				$display_mode = $this->defaults['display_mode'];
+			}
+
+			if ( ! in_array( $mobile_mode, [ 'inline', 'compact' ], true ) ) {
+				$mobile_mode = $this->defaults['mobile_mode'];
+			}
+
+			if ( ! in_array( $floating_side, [ 'left', 'right' ], true ) ) {
+				$floating_side = $this->defaults['floating_side'];
+			}
 
 			$this->options = array_merge(
 				$this->options,
 				[
-					'fragment_prefix'               => $fragment_prefix,
 					'position'                      => $position,
 					'start'                         => $start,
 					'show_heading_text'             => $show_heading_text,
@@ -742,6 +783,11 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 					'visibility_show'               => $visibility_show,
 					'visibility_hide'               => $visibility_hide,
 					'visibility_hide_by_default'    => $visibility_hide_by_default,
+					'display_mode'                  => $display_mode,
+					'mobile_mode'                   => $mobile_mode,
+					'floating_side'                 => $floating_side,
+					'display_top_offset'            => $display_top_offset,
+					'exclude_selectors'             => $exclude_selectors,
 					'width'                         => $width,
 					'width_custom'                  => $width_custom,
 					'width_custom_units'            => $width_custom_units,
@@ -757,19 +803,18 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 					'custom_links_visited_colour'   => $custom_links_visited_colour,
 					'lowercase'                     => $lowercase,
 					'hyphenate'                     => $hyphenate,
-					'bullet_spacing'                => $bullet_spacing,
-					'include_homepage'              => $include_homepage,
 					'exclude_css'                   => $exclude_css,
 					'heading_levels'                => $heading_levels,
 					'exclude'                       => $exclude,
-					'restrict_path'                 => $restrict_path,
-					'sitemap_show_page_listing'     => $sitemap_show_page_listing,
-					'sitemap_show_category_listing' => $sitemap_show_category_listing,
-					'sitemap_heading_type'          => $sitemap_heading_type,
-					'sitemap_pages'                 => $sitemap_pages,
-					'sitemap_categories'            => $sitemap_categories,
-					'rest_toc_output'               => $rest_toc_output,
 				]
+			);
+
+			unset(
+				$this->options['fragment_prefix'],
+				$this->options['bullet_spacing'],
+				$this->options['include_homepage'],
+				$this->options['restrict_path'],
+				$this->options['rest_toc_output']
 			);
 
 			// update_option will return false if no changes were made
@@ -786,22 +831,32 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 			// was there a form submission, if so, do security checks and try to save form
 			if ( isset( $_GET['update'] ) ) {  // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 				if ( $this->save_admin_options() ) {
-					$msg = '<div id="message" class="updated fade"><p>' . __( 'Options saved.', 'table-of-contents-plus' ) . '</p></div>';
+					$msg = '<div id="message" class="wptoc-admin-alert is-success"><p>' . __( 'Options saved.', 'table-of-contents-plus' ) . '</p></div>';
 				} else {
-					$msg = '<div id="message" class="error fade"><p>' . __( 'Save failed.', 'table-of-contents-plus' ) . '</p></div>';
+					$msg = '<div id="message" class="wptoc-admin-alert is-error"><p>' . __( 'Save failed.', 'table-of-contents-plus' ) . '</p></div>';
 				}
 			}
 
 			?>
-<div id='toc' class='wrap'>
-<div id="icon-options-general" class="icon32"><br></div>
-<h2>Table of Contents Plus</h2>
+<div id='toc' class='wrap wptoc-admin-page'>
+	<div class="wptoc-admin-hero">
+		<h1>WPTOC+</h1>
+		<p><?php esc_html_e( 'Configure how the table of contents is inserted, displayed, and styled across your site.', 'table-of-contents-plus' ); ?></p>
+	</div>
 			<?php echo wp_kses_post( $msg ); ?>
-<form method="post" action="<?php echo esc_url( '?page=' . $page . '&update' ); ?>">
+<form class="wptoc-admin-form" method="post" action="<?php echo esc_url( '?page=' . $page . '&update' ); ?>">
 			<?php wp_nonce_field( plugin_basename( __FILE__ ), 'toc-admin-options' ); ?>
+	<div class="wptoc-admin-save-overlay" aria-hidden="true">
+		<div class="wptoc-admin-save-overlay__dialog" role="status" aria-live="polite">
+			<span class="wptoc-admin-save-spinner"></span>
+			<span class="wptoc-admin-save-overlay__title"><?php esc_html_e( 'Saving changes', 'table-of-contents-plus' ); ?></span>
+			<span class="wptoc-admin-save-overlay__text"><?php esc_html_e( 'Please wait while WPTOC+ updates your settings.', 'table-of-contents-plus' ); ?></span>
+		</div>
+	</div>
 
 <ul id="tabbed-nav">
-	<li><a href="#tab1"><?php esc_html_e( 'Main Options', 'table-of-contents-plus' ); ?></a></li>
+	<li><a href="#tab1"><?php esc_html_e( 'Options', 'table-of-contents-plus' ); ?></a></li>
+	<li><a href="#tab2"><?php esc_html_e( 'Advanced Options', 'table-of-contents-plus' ); ?></a></li>
 
 	<?php
 	// XTEC ************ AFEGIT - Change default settings
@@ -812,8 +867,7 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 	// ************ FI
 	?>
 
-	<li><a href="#tab2"><?php esc_html_e( 'Sitemap', 'table-of-contents-plus' ); ?></a></li>
-	<li class="url"><a href="https://zedzedzed.github.io/docs/tocplus.html"><?php esc_html_e( 'Help', 'table-of-contents-plus' ); ?></a></li>
+	<li class="url"><a href="https://github.com/psydox/WPTOC-Plus" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Help', 'table-of-contents-plus' ); ?></a></li>
 
 	<?php
 	// XTEC ************ AFEGIT - Change default settings
@@ -921,6 +975,47 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 				<input type="checkbox" value="1" id="visibility_hide_by_default" name="visibility_hide_by_default"<?php if ( $this->options['visibility_hide_by_default'] ) echo ' checked="checked"'; ?> /><label for="visibility_hide_by_default"> <?php esc_html_e( 'Hide the table of contents initially', 'table-of-contents-plus' ); ?></label>
 			</div>
 		</div>
+	</td>
+</tr>
+<tr>
+	<th><label for="display_mode"><?php esc_html_e( 'Display mode', 'table-of-contents-plus' ); ?></label></th>
+	<td>
+		<select name="display_mode" id="display_mode">
+			<option value="inline"<?php if ( 'inline' === $this->options['display_mode'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'Standard inline', 'table-of-contents-plus' ); ?></option>
+			<option value="sticky"<?php if ( 'sticky' === $this->options['display_mode'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'Sticky sidebar (desktop)', 'table-of-contents-plus' ); ?></option>
+			<option value="floating"<?php if ( 'floating' === $this->options['display_mode'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'Floating panel (desktop)', 'table-of-contents-plus' ); ?></option>
+		</select>
+		<br>
+		<span class="description"><label for="display_mode"><?php esc_html_e( 'Sticky and floating modes automatically fall back to the standard inline TOC on smaller screens.', 'table-of-contents-plus' ); ?></label></span>
+	</td>
+</tr>
+<tr>
+	<th><label for="mobile_mode"><?php esc_html_e( 'Mobile mode', 'table-of-contents-plus' ); ?></label></th>
+	<td>
+		<select name="mobile_mode" id="mobile_mode">
+			<option value="inline"<?php if ( 'inline' === $this->options['mobile_mode'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'Standard inline', 'table-of-contents-plus' ); ?></option>
+			<option value="compact"<?php if ( 'compact' === $this->options['mobile_mode'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'Compact expandable panel', 'table-of-contents-plus' ); ?></option>
+		</select>
+		<br>
+		<span class="description"><label for="mobile_mode"><?php esc_html_e( 'Adds a mobile-only compact toggle so the TOC stays out of the way on smaller screens.', 'table-of-contents-plus' ); ?></label></span>
+	</td>
+</tr>
+<tr>
+	<th><label for="floating_side"><?php esc_html_e( 'Floating side', 'table-of-contents-plus' ); ?></label></th>
+	<td>
+		<select name="floating_side" id="floating_side">
+			<option value="right"<?php if ( 'right' === $this->options['floating_side'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'Right side', 'table-of-contents-plus' ); ?></option>
+			<option value="left"<?php if ( 'left' === $this->options['floating_side'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'Left side', 'table-of-contents-plus' ); ?></option>
+		</select>
+		<br>
+		<span class="description"><label for="floating_side"><?php esc_html_e( 'Only applies when display mode is set to Floating panel.', 'table-of-contents-plus' ); ?></label></span>
+	</td>
+</tr>
+<tr>
+	<th><label for="display_top_offset"><?php esc_html_e( 'Display top offset', 'table-of-contents-plus' ); ?></label></th>
+	<td>
+		<input type="text" class="regular-text" value="<?php echo intval( $this->options['display_top_offset'] ); ?>" id="display_top_offset" name="display_top_offset"> px<br>
+		<span class="description"><label for="display_top_offset"><?php esc_html_e( 'Adds top spacing for sticky sidebar and floating panel modes so the TOC clears your theme\'s sticky header.', 'table-of-contents-plus' ); ?></label></span>
 	</td>
 </tr>
 <tr>
@@ -1145,8 +1240,9 @@ if ( is_xtec_super_admin() ) {
 </tbody>
 </table>
 
-<h3><?php esc_html_e( 'Advanced', 'table-of-contents-plus' ); ?> <span class="show_hide">(<a href="#toc_advanced_usage"><?php esc_html_e( 'show', 'table-of-contents-plus' ); ?></a>)</span></h3>
-<div id="toc_advanced_usage">
+	</div>
+
+	<div id="tab2" class="tab_content">
 	<h4><?php esc_html_e( 'Power options', 'table-of-contents-plus' ); ?></h4>
 	<table class="form-table">
 	<tbody>
@@ -1169,16 +1265,8 @@ if ( is_xtec_super_admin() ) {
 		<td><input type="checkbox" value="1" id="hyphenate" name="hyphenate"<?php if ( $this->options['hyphenate'] ) echo ' checked="checked"'; ?> /><label for="hyphenate"> <?php esc_html_e( 'Use - rather than _ in anchors', 'table-of-contents-plus' ); ?></label></td>
 	</tr>
 	<tr>
-		<th><label for="include_homepage"><?php esc_html_e( 'Include homepage', 'table-of-contents-plus' ); ?></label></th>
-		<td><input type="checkbox" value="1" id="include_homepage" name="include_homepage"<?php if ( $this->options['include_homepage'] ) echo ' checked="checked"'; ?> /><label for="include_homepage"> <?php esc_html_e( 'Show the table of contents for qualifying items on the homepage', 'table-of-contents-plus' ); ?></label></td>
-	</tr>
-	<tr>
 		<th><label for="exclude_css"><?php esc_html_e( 'Exclude CSS file', 'table-of-contents-plus' ); ?></label></th>
 		<td><input type="checkbox" value="1" id="exclude_css" name="exclude_css"<?php if ( $this->options['exclude_css'] ) echo ' checked="checked"'; ?> /><label for="exclude_css"> <?php esc_html_e( "Prevent the loading of this plugin's CSS styles. When selected, the appearance options from above will also be ignored.", 'table-of-contents-plus' ); ?></label></td>
-	</tr>
-	<tr>
-		<th><label for="bullet_spacing"><?php esc_html_e( 'Preserve theme bullets', 'table-of-contents-plus' ); ?></label></th>
-		<td><input type="checkbox" value="1" id="bullet_spacing" name="bullet_spacing"<?php if ( $this->options['bullet_spacing'] ) echo ' checked="checked"'; ?> /><label for="bullet_spacing"> <?php esc_html_e( 'If your theme includes background images for unordered list elements, enable this to support them', 'table-of-contents-plus' ); ?></label></td>
 	</tr>
 
 	<?php
@@ -1217,6 +1305,18 @@ if ( is_xtec_super_admin() ) {
 			</ul>
 		</td>
 	</tr>
+	<tr>
+		<th><label for="exclude_selectors"><?php esc_html_e( 'Exclude by selector or class', 'table-of-contents-plus' ); ?></label></th>
+		<td>
+			<input type="text" class="regular-text" value="<?php echo esc_attr( $this->options['exclude_selectors'] ); ?>" id="exclude_selectors" name="exclude_selectors" style="width: 100%;" /><br>
+			<label for="exclude_selectors"><?php echo wp_kses_post( __( 'Remove headings that appear inside matching containers before the TOC is built. Separate multiple entries with a pipe <code>|</code> or comma. Supports simple selectors such as <code>.class-name</code>, <code>#section-id</code>, <code>tag</code>, <code>tag.class-name</code>, and <code>tag#section-id</code>. Some examples:', 'table-of-contents-plus' ) ); ?></label><br/>
+			<ul>
+				<li><?php echo wp_kses_post( __( '<code>.wp-block-cover</code> ignore headings inside cover blocks', 'table-of-contents-plus' ) ); ?></li>
+				<li><?php echo wp_kses_post( __( '<code>.et_pb_toggle,.et_pb_accordion</code> ignore headings inside Divi toggles or accordions', 'table-of-contents-plus' ) ); ?></li>
+				<li><?php echo wp_kses_post( __( '<code>section.hero|div.reusable-banner</code> ignore headings inside specific section or div containers', 'table-of-contents-plus' ) ); ?></li>
+			</ul>
+		</td>
+	</tr>
 
 	<?php
 	// XTEC ************ AFEGIT - Restrict access to all users but xtecadmin
@@ -1244,51 +1344,6 @@ if ( is_xtec_super_admin() ) {
 	// ************ FI
 	?>
 
-	<tr>
-		<th><label for="restrict_path"><?php esc_html_e( 'Restrict path', 'table-of-contents-plus' ); ?></label></th>
-		<td>
-			<input type="text" class="regular-text" value="<?php echo esc_attr( $this->options['restrict_path'] ); ?>" id="restrict_path" name="restrict_path"><br>
-			<label for="restrict_path"><?php esc_html_e( 'Restrict automatic generation of the table of contents to pages that match the required path. This path is from the root of your site and always begins with a forward slash.', 'table-of-contents-plus' ); ?><br>
-			<span class="description"><?php
-			/* translators: example of URL path restrictions */
-			esc_html_e( 'Eg: /wiki/, /corporate/annual-reports/', 'table-of-contents-plus' ); ?></span></label>
-		</td>
-	</tr>
-
-	<?php
-	// XTEC ************ AFEGIT - Restrict access to all users but xtecadmin
-	// 2017.05.04 @xaviernietosanchez
-
-	if ( is_xtec_super_admin() ) {
-
-	// ************ FI
-	?>
-
-	<tr>
-		<th><label for="fragment_prefix"><?php esc_html_e( 'Default anchor prefix', 'table-of-contents-plus' ); ?></label></th>
-		<td>
-			<input type="text" class="regular-text" value="<?php echo esc_attr( $this->options['fragment_prefix'] ); ?>" id="fragment_prefix" name="fragment_prefix" /><br>
-			<label for="fragment_prefix"><?php esc_html_e( 'Anchor targets are restricted to alphanumeric characters as per HTML specification (see readme for more detail). The default anchor prefix will be used when no characters qualify. When left blank, a number will be used instead.', 'table-of-contents-plus' ); ?><br>
-			<?php esc_html_e( 'This option normally applies to content written in character sets other than ASCII.', 'table-of-contents-plus' ); ?><br>
-			<span class="description"><?php
-			/* translators: example anchor prefixes when no ascii characters match */
-			esc_html_e( 'Eg: i, toc_index, index, _', 'table-of-contents-plus' ); ?></span></label>
-		</td>
-	</tr>
-
-	<?php
-	// XTEC ************ AFEGIT - Restrict access to all users but xtecadmin
-	// 2017.05.04 @xaviernietosanchez
-
-	}
-
-	// ************ FI
-	?>
-
-	<tr>
-		<th><label for="rest_toc_output"><?php esc_html_e( 'Include in REST requests', 'table-of-contents-plus' ); ?></label></th>
-		<td><input type="checkbox" value="1" id="rest_toc_output" name="rest_toc_output"<?php if ( $this->options['rest_toc_output'] ) echo ' checked="checked"'; ?> /><label for="rest_toc_output"> <?php esc_html_e( 'Allow the table of contents to be included in the output of REST API requests.', 'table-of-contents-plus' ); ?></label></td>
-	</tr>
 	</tbody>
 	</table>
 
@@ -1297,79 +1352,16 @@ if ( is_xtec_super_admin() ) {
 	<p><?php
 	/* translators: advanced usage, %s is HTML code for <code>[toc]</code> */
 	echo wp_kses_post( sprintf( __( 'If you would like to fully customise the position of the table of contents, you can use the %s shortcode by placing it at the desired position of your post, page or custom post type. This method allows you to generate the table of contents despite having auto insertion disabled for its content type. Please visit the help tab for further information about this shortcode.', 'table-of-contents-plus' ), '<code>[toc]</code>' ) ); ?></p>
-</div>
-
-
 	</div>
-	<div id="tab2" class="tab_content">
-
-
-<p><?php
-	/* translators: %s is HTML code for <code>[sitemap]</code> */
-	echo wp_kses_post( sprintf( __( 'At its simplest, placing %s into a page will automatically create a sitemap of all pages and categories. This also works in a text widget.', 'table-of-contents-plus' ), '<code>[sitemap]</code>' ) ); ?></p>
-<table class="form-table">
-<tbody>
-<tr>
-	<th><label for="sitemap_show_page_listing"><?php esc_html_e( 'Show page listing', 'table-of-contents-plus' ); ?></label></th>
-	<td><input type="checkbox" value="1" id="sitemap_show_page_listing" name="sitemap_show_page_listing"<?php if ( $this->options['sitemap_show_page_listing'] ) echo ' checked="checked"'; ?> /></td>
-</tr>
-<tr>
-	<th><label for="sitemap_show_category_listing"><?php esc_html_e( 'Show category listing', 'table-of-contents-plus' ); ?></label></th>
-	<td><input type="checkbox" value="1" id="sitemap_show_category_listing" name="sitemap_show_category_listing"<?php if ( $this->options['sitemap_show_category_listing'] ) echo ' checked="checked"'; ?> /></td>
-</tr>
-<tr>
-	<th><label for="sitemap_heading_type"><?php esc_html_e( 'Heading type', 'table-of-contents-plus' ); ?></label></th>
-	<td><label for="sitemap_heading_type"><?php
-	/* translators: the full line is supposed to read - Use [1-6 drop down list] to print out the titles */
-	esc_html_e( 'Use', 'table-of-contents-plus' ); ?> h</label><select name="sitemap_heading_type" id="sitemap_heading_type">
-			<?php
-			// h1 to h6
-			for ( $i = 1; $i <= 6; $i++ ) {
-				echo '<option value="' . esc_attr( $i ) . '"';
-				if ( $i === $this->options['sitemap_heading_type'] ) {
-					echo ' selected="selected"';
-				}
-				echo '>' . esc_attr( $i ) . '</option>' . "\n";
-			}
-			?>
-		</select> <?php
-		/* translators: the full line is supposed to read - Use [h1-h6 drop down list] to print out the titles */
-		esc_html_e( 'to print out the titles', 'table-of-contents-plus' ); ?>
-	</td>
-</tr>
-<tr>
-	<th><label for="sitemap_pages"><?php esc_html_e( 'Pages label', 'table-of-contents-plus' ); ?></label></th>
-	<td><input type="text" class="regular-text" value="<?php echo esc_attr( $this->options['sitemap_pages'] ); ?>" id="sitemap_pages" name="sitemap_pages" />
-		<span class="description"><?php esc_html_e( 'Eg: Pages, Page List', 'table-of-contents-plus' ); ?></span>
-	</td>
-</tr>
-<tr>
-	<th><label for="sitemap_categories"><?php esc_html_e( 'Categories label', 'table-of-contents-plus' ); ?></label></th>
-	<td><input type="text" class="regular-text" value="<?php echo esc_attr( $this->options['sitemap_categories'] ); ?>" id="sitemap_categories" name="sitemap_categories" />
-		<span class="description"><?php esc_html_e( 'Eg: Categories, Category List', 'table-of-contents-plus' ); ?></span>
-	</td>
-</tr>
-</tbody>
-</table>
-
-<h3><?php esc_html_e( 'Advanced usage', 'table-of-contents-plus' ); ?> <span class="show_hide">(<a href="#sitemap_advanced_usage"><?php esc_html_e( 'show', 'table-of-contents-plus' ); ?></a>)</span></h3>
-<div id="sitemap_advanced_usage">
-	<p><code>[sitemap_pages]</code> <?php
-	/* translators: %s is the following HTML code <code>[sitemap_categories]</code> */
-	echo wp_kses_post( sprintf( __( 'lets you print out a listing of only pages. Similarly %s can be used to print out a category listing. They both can accept a number of attributes so visit the help tab for more information.', 'table-of-contents-plus' ), '<code>[sitemap_categories]</code>' ) ); ?></p>
-	<p><?php esc_html_e( 'Examples', 'table-of-contents-plus' ); ?></p>
-	<ol>
-		<li><code>[sitemap_categories no_label="true"]</code> <?php esc_html_e( 'hides the heading from a category listing', 'table-of-contents-plus' ); ?></li>
-		<li><code>[sitemap_pages heading="6" label="This is an awesome listing" exclude="1,15"]</code> <?php echo wp_kses_post( __( 'Uses h6 to display <em>This is an awesome listing</em> on a page listing excluding pages with IDs 1 and 15', 'table-of-contents-plus' ) ); ?></li>
-	</ol>
-</div>
 
 
 	</div>
 </div>
 
 
-<p class="submit"><input type="submit" name="submit" class="button-primary" value="<?php esc_html_e( 'Update Options', 'table-of-contents-plus' ); ?>" /></p>
+<p class="submit wptoc-admin-submit">
+	<input type="submit" name="submit" class="button-primary" value="<?php esc_html_e( 'Update Options', 'table-of-contents-plus' ); ?>" />
+</p>
 </form>
 </div>
 			<?php
@@ -1467,7 +1459,7 @@ if ( is_xtec_super_admin() ) {
 				// if blank, then prepend with the fragment prefix
 				// blank anchors normally appear on sites that don't use the latin charset
 				if ( ! $return ) {
-					$return = ( $this->options['fragment_prefix'] ) ? wp_kses_post( $this->options['fragment_prefix'] ) : '_';
+					$return = '_';
 				}
 
 				// hyphenate?
@@ -1489,77 +1481,72 @@ if ( is_xtec_super_admin() ) {
 
 
 		private function build_hierarchy( &$matches ) {
-			$current_depth      = 100;  // headings can't be larger than h6 but 100 as a default to be sure
-			$html               = '';
-			$numbered_items     = [];
-			$numbered_items_min = null;
-			$count_matches      = count( $matches );
+			$html           = '';
+			$heading_stack  = [];
+			$numbered_items = [];
+			$count_matches  = count( $matches );
 
-			// reset the internal collision collection
-			$this->collision_collector = [];
-
-			// find the minimum heading to establish our baseline
 			for ( $i = 0; $i < $count_matches; $i++ ) {
-				if ( $current_depth > $matches[ $i ][2] ) {
-					$current_depth = (int) $matches[ $i ][2];
+				$depth = (int) $matches[ $i ][2];
+
+				if ( empty( $heading_stack ) ) {
+					$heading_stack[]    = $depth;
+					$numbered_items[1] = 0;
+					$html              .= '<li>';
+				} elseif ( $depth > end( $heading_stack ) ) {
+					// Collapse skipped heading levels into a single nested level to keep the markup valid.
+					$heading_stack[] = $depth;
+					if ( ! isset( $numbered_items[ count( $heading_stack ) ] ) ) {
+						$numbered_items[ count( $heading_stack ) ] = 0;
+					}
+					$html .= '<ul><li>';
+				} else {
+					while ( ! empty( $heading_stack ) && $depth < end( $heading_stack ) ) {
+						$numbered_items[ count( $heading_stack ) ] = 0;
+						array_pop( $heading_stack );
+						$html .= '</li></ul>';
+					}
+
+					if ( empty( $heading_stack ) ) {
+						$heading_stack[]    = $depth;
+						$numbered_items[1] = 0;
+						$html              .= '<li>';
+					} elseif ( $depth > end( $heading_stack ) ) {
+						$heading_stack[] = $depth;
+						if ( ! isset( $numbered_items[ count( $heading_stack ) ] ) ) {
+							$numbered_items[ count( $heading_stack ) ] = 0;
+						}
+						$html .= '<ul><li>';
+					} else {
+						$html .= '</li><li>';
+					}
 				}
+
+				$display_depth = count( $heading_stack );
+				$anchor        = isset( $matches[ $i ]['anchor'] ) ? $matches[ $i ]['anchor'] : $this->url_anchor_target( $matches[ $i ][0] );
+				$html         .= '<a href="#' . $anchor . '">';
+
+				if ( $this->options['ordered_list'] ) {
+					$html .= '<span class="toc_number toc_depth_' . $display_depth . '">';
+					for ( $j = 1; $j < $display_depth; $j++ ) {
+						$number = isset( $numbered_items[ $j ] ) ? $numbered_items[ $j ] : 0;
+						$html  .= $number . '.';
+					}
+
+					$current_number = isset( $numbered_items[ $display_depth ] ) ? $numbered_items[ $display_depth ] + 1 : 1;
+					$html          .= $current_number . '</span> ';
+					$numbered_items[ $display_depth ] = $current_number;
+				}
+
+				$html .= wp_strip_all_tags( $matches[ $i ][0] ) . '</a>';
 			}
 
-			$numbered_items[ $current_depth ] = 0;
-			$numbered_items_min               = $current_depth;
-
-			for ( $i = 0; $i < $count_matches; $i++ ) {
-
-				if ( $current_depth === (int) $matches[ $i ][2] ) {
-					$html .= '<li>';
+			while ( ! empty( $heading_stack ) ) {
+				$html .= '</li>';
+				if ( count( $heading_stack ) > 1 ) {
+					$html .= '</ul>';
 				}
-
-				// start lists
-				if ( $current_depth !== (int) $matches[ $i ][2] ) {
-					for ( $current_depth; $current_depth < (int) $matches[ $i ][2]; $current_depth++ ) {
-						$numbered_items[ $current_depth + 1 ] = 0;
-						$html                                .= '<ul><li>';
-					}
-				}
-
-				// list item
-				if ( in_array( (int) $matches[ $i ][2], $this->options['heading_levels'], true ) ) {
-					$html .= '<a href="#' . $this->url_anchor_target( $matches[ $i ][0] ) . '">';
-					if ( $this->options['ordered_list'] ) {
-						// attach leading numbers when lower in hierarchy
-						$html .= '<span class="toc_number toc_depth_' . ( $current_depth - $numbered_items_min + 1 ) . '">';
-						for ( $j = $numbered_items_min; $j < $current_depth; $j++ ) {
-							$number = ( $numbered_items[ $j ] ) ? $numbered_items[ $j ] : 0;
-							$html  .= $number . '.';
-						}
-
-						$html .= ( $numbered_items[ $current_depth ] + 1 ) . '</span> ';
-						$numbered_items[ $current_depth ]++;
-					}
-					$html .= wp_strip_all_tags( $matches[ $i ][0] ) . '</a>';
-				}
-
-				// end lists
-				if ( count( $matches ) - 1 !== $i ) {
-					if ( $current_depth > (int) $matches[ $i + 1 ][2] ) {
-						for ( $current_depth; $current_depth > (int) $matches[ $i + 1 ][2]; $current_depth-- ) {
-							$html                            .= '</li></ul>';
-							$numbered_items[ $current_depth ] = 0;
-						}
-					}
-
-					if ( (int) @$matches[ $i + 1 ][2] === $current_depth ) {
-						$html .= '</li>';
-					}
-				} else {
-					// this is the last item, make sure we close off all tags
-					for ( $current_depth; $current_depth >= $numbered_items_min; $current_depth-- ) {
-						$html .= '</li>';
-						if ( $current_depth !== $numbered_items_min ) {
-							$html .= '</ul>';
-						}
-					}
-				}
+				array_pop( $heading_stack );
 			}
 
 			return $html;
@@ -1603,6 +1590,218 @@ if ( is_xtec_super_admin() ) {
 		}
 
 
+		private function get_excluded_selectors() {
+			if ( ! $this->options['exclude_selectors'] ) {
+				return [];
+			}
+
+			return array_values(
+				array_filter(
+					array_map(
+						'trim',
+						preg_split( '/[\r\n|,]+/', $this->options['exclude_selectors'] )
+					)
+				)
+			);
+		}
+
+
+		private function get_selector_xpath( $selector ) {
+			$selector = trim( $selector );
+
+			if ( ! $selector ) {
+				return false;
+			}
+
+			if ( preg_match( '/^\.([A-Za-z0-9_-]+)$/', $selector, $matches ) ) {
+				return '//*[contains(concat(" ", normalize-space(@class), " "), " ' . $matches[1] . ' ")]';
+			}
+
+			if ( preg_match( '/^#([A-Za-z0-9_-]+)$/', $selector, $matches ) ) {
+				return '//*[@id="' . $matches[1] . '"]';
+			}
+
+			if ( preg_match( '/^([A-Za-z][A-Za-z0-9_-]*)\.([A-Za-z0-9_-]+)$/', $selector, $matches ) ) {
+				return '//' . strtolower( $matches[1] ) . '[contains(concat(" ", normalize-space(@class), " "), " ' . $matches[2] . ' ")]';
+			}
+
+			if ( preg_match( '/^([A-Za-z][A-Za-z0-9_-]*)#([A-Za-z0-9_-]+)$/', $selector, $matches ) ) {
+				return '//' . strtolower( $matches[1] ) . '[@id="' . $matches[2] . '"]';
+			}
+
+			if ( preg_match( '/^[A-Za-z][A-Za-z0-9_-]*$/', $selector ) ) {
+				return '//' . strtolower( $selector );
+			}
+
+			return false;
+		}
+
+
+		private function strip_excluded_heading_containers( $content ) {
+			$selectors = $this->get_excluded_selectors();
+
+			if ( empty( $selectors ) || ! class_exists( 'DOMDocument' ) || ! class_exists( 'DOMXPath' ) ) {
+				return $content;
+			}
+
+			$internal_errors = libxml_use_internal_errors( true );
+			$dom             = new DOMDocument();
+			$wrapper_id      = 'toc-exclude-root';
+			$html            = '<?xml encoding="utf-8" ?><!DOCTYPE html><html><body><div id="' . $wrapper_id . '">' . $content . '</div></body></html>';
+
+			if ( ! $dom->loadHTML( $html ) ) {
+				libxml_clear_errors();
+				libxml_use_internal_errors( $internal_errors );
+				return $content;
+			}
+
+			$xpath = new DOMXPath( $dom );
+
+			foreach ( $selectors as $selector ) {
+				$query = $this->get_selector_xpath( $selector );
+
+				if ( ! $query ) {
+					continue;
+				}
+
+				$nodes = $xpath->query( $query );
+
+				if ( ! $nodes ) {
+					continue;
+				}
+
+				$to_remove = [];
+
+				foreach ( $nodes as $node ) {
+					if ( ! $node instanceof DOMElement || $wrapper_id === $node->getAttribute( 'id' ) ) {
+						continue;
+					}
+
+					$to_remove[] = $node;
+				}
+
+				foreach ( $to_remove as $node ) {
+					if ( $node->parentNode ) {
+						$node->parentNode->removeChild( $node );
+					}
+				}
+			}
+
+			$root = $xpath->query( '//*[@id="' . $wrapper_id . '"]' )->item( 0 );
+
+			if ( ! $root ) {
+				libxml_clear_errors();
+				libxml_use_internal_errors( $internal_errors );
+				return $content;
+			}
+
+			$filtered_content = '';
+
+			foreach ( $root->childNodes as $child ) {
+				$filtered_content .= $dom->saveHTML( $child );
+			}
+
+			libxml_clear_errors();
+			libxml_use_internal_errors( $internal_errors );
+
+			return $filtered_content;
+		}
+
+
+		private function get_heading_matches( $content = '', $apply_extract_filter = true ) {
+			$matches = [];
+
+			if ( ! $content ) {
+				return $matches;
+			}
+
+			if ( $apply_extract_filter ) {
+				$content = apply_filters( 'toc_extract_headings', $content );
+			}
+
+			$content = $this->strip_excluded_heading_containers( $content );
+
+			if ( ! preg_match_all( '/(<h([1-6]{1})[^>]*>).*<\/h\2>/msuU', $content, $matches, PREG_SET_ORDER ) ) {
+				return [];
+			}
+
+			if ( count( $this->options['heading_levels'] ) !== 6 ) {
+				$matches = array_values(
+					array_filter(
+						$matches,
+						function ( $match ) {
+							return in_array( (int) $match[2], $this->options['heading_levels'], true );
+						}
+					)
+				);
+			}
+
+			if ( $this->options['exclude'] ) {
+				$excluded_headings = array_map(
+					function ( $heading ) {
+						return str_replace( [ '*' ], [ '.*' ], trim( $heading ) );
+					},
+					explode( '|', $this->options['exclude'] )
+				);
+
+				$matches = array_values(
+					array_filter(
+						$matches,
+						function ( $match ) use ( $excluded_headings ) {
+							$heading_text = wp_strip_all_tags( $match[0] );
+
+							foreach ( $excluded_headings as $excluded_heading ) {
+								if ( @preg_match( '/^' . $excluded_heading . '$/imU', $heading_text ) ) {
+									return false;
+								}
+							}
+
+							return true;
+						}
+					)
+				);
+			}
+
+			return array_values(
+				array_filter(
+					$matches,
+					function ( $match ) {
+						return trim( wp_strip_all_tags( $match[0] ) ) !== '';
+					}
+				)
+			);
+		}
+
+
+		private function count_content_headings( $content = '' ) {
+			return count( $this->get_heading_matches( $content, false ) );
+		}
+
+
+		private function should_render_toc( $content ) {
+			$post_override = $this->get_post_override();
+
+			if ( 'hide' === $post_override ) {
+				return false;
+			}
+
+			if ( 'show' === $post_override ) {
+				return true;
+			}
+
+			if ( $this->is_eligible() ) {
+				return true;
+			}
+
+			if ( false !== strpos( $content, '[no_toc]' ) ) {
+				return false;
+			}
+
+			return in_array( get_post_type(), $this->options['auto_insert_post_types'], true )
+				&& $this->count_content_headings( $content ) >= $this->options['start'];
+		}
+
+
 		/**
 		 * This function extracts headings from the html formatted $content.  It will pull out
 		 * only the required headings as specified in the options.  For all qualifying headings,
@@ -1623,107 +1822,37 @@ if ( is_xtec_super_admin() ) {
 			$this->collision_collector = [];
 
 			if ( is_array( $find ) && is_array( $replace ) && $content ) {
-				// filter the content
-				$content = apply_filters( 'toc_extract_headings', $content );
+				$matches = $this->get_heading_matches( $content );
 
-				// get all headings
-				// the html spec allows for a maximum of 6 heading depths
-				if ( preg_match_all( '/(<h([1-6]{1})[^>]*>).*<\/h\2>/msuU', $content, $matches, PREG_SET_ORDER ) ) {
-
-					// remove undesired headings (if any) as defined by heading_levels
-					if ( count( $this->options['heading_levels'] ) !== 6 ) {
-						$new_matches   = [];
-						$count_matches = count( $matches );
-						for ( $i = 0; $i < $count_matches; $i++ ) {
-							if ( in_array( (int) $matches[ $i ][2], $this->options['heading_levels'], true ) ) {
-								$new_matches[] = $matches[ $i ];
-							}
-						}
-						$matches = $new_matches;
-					}
-
-					// remove specific headings if provided via the 'exclude' property
-					if ( $this->options['exclude'] ) {
-						$excluded_headings       = explode( '|', $this->options['exclude'] );
-						$count_excluded_headings = count( $excluded_headings );
-						if ( $count_excluded_headings > 0 ) {
-							for ( $j = 0; $j < $count_excluded_headings; $j++ ) {
-								// escape some regular expression characters
-								// others: http://www.php.net/manual/en/regexp.reference.meta.php
-								$excluded_headings[ $j ] = str_replace(
-									[ '*' ],
-									[ '.*' ],
-									trim( $excluded_headings[ $j ] )
-								);
-							}
-
-							$new_matches   = [];
-							$count_matches = count( $matches );
-							for ( $i = 0; $i < $count_matches; $i++ ) {
-								$found                   = false;
-								$count_excluded_headings = count( $excluded_headings );
-								for ( $j = 0; $j < $count_excluded_headings; $j++ ) {
-									if ( @preg_match( '/^' . $excluded_headings[ $j ] . '$/imU', wp_strip_all_tags( $matches[ $i ][0] ) ) ) {
-										$found = true;
-										break;
-									}
-								}
-								if ( ! $found ) {
-									$new_matches[] = $matches[ $i ];
-								}
-							}
-							if ( count( $matches ) !== count( $new_matches ) ) {
-								$matches = $new_matches;
-							}
-						}
-					}
-
-					// remove empty headings
-					$new_matches   = [];
+				if ( count( $matches ) >= $this->options['start'] ) {
 					$count_matches = count( $matches );
 					for ( $i = 0; $i < $count_matches; $i++ ) {
-						if ( trim( wp_strip_all_tags( $matches[ $i ][0] ) ) !== false ) {
-							$new_matches[] = $matches[ $i ];
-						}
-					}
-					if ( count( $matches ) !== count( $new_matches ) ) {
-						$matches = $new_matches;
-					}
+						$anchor                 = $this->url_anchor_target( $matches[ $i ][0] );
+						$matches[ $i ]['anchor'] = $anchor;
+						$find[]                 = $matches[ $i ][0];
+						$replace[]              = str_replace(
+							[
+								$matches[ $i ][1],
+								'</h' . $matches[ $i ][2] . '>',
+							],
+							[
+								$matches[ $i ][1] . '<span id="' . $anchor . '">',
+								'</span></h' . $matches[ $i ][2] . '>',
+							],
+							$matches[ $i ][0]
+						);
 
-					// check minimum number of headings
-					if ( count( $matches ) >= $this->options['start'] ) {
-						$count_matches = count( $matches );
-						for ( $i = 0; $i < $count_matches; $i++ ) {
-							// get anchor and add to find and replace arrays
-							$anchor    = $this->url_anchor_target( $matches[ $i ][0] );
-							$find[]    = $matches[ $i ][0];
-							$replace[] = str_replace(
-								[
-									$matches[ $i ][1], // start of heading
-									'</h' . $matches[ $i ][2] . '>', // end of heading
-								],
-								[
-									$matches[ $i ][1] . '<span id="' . $anchor . '">',
-									'</span></h' . $matches[ $i ][2] . '>',
-								],
-								$matches[ $i ][0]
-							);
-
-							// assemble flat list
-							if ( ! $this->options['show_heirarchy'] ) {
-								$items .= '<li><a href="#' . $anchor . '">';
-								if ( $this->options['ordered_list'] ) {
-									$items .= count( $replace ) . ' ';
-								}
-								$items .= wp_strip_all_tags( $matches[ $i ][0] ) . '</a></li>';
+						if ( ! $this->options['show_heirarchy'] ) {
+							$items .= '<li><a href="#' . $anchor . '">';
+							if ( $this->options['ordered_list'] ) {
+								$items .= count( $replace ) . ' ';
 							}
+							$items .= wp_strip_all_tags( $matches[ $i ][0] ) . '</a></li>';
 						}
+					}
 
-						// build a hierarchical toc?
-						// we could have tested for $items but that var can be quite large in some cases
-						if ( $this->options['show_heirarchy'] ) {
-							$items = $this->build_hierarchy( $matches );
-						}
+					if ( $this->options['show_heirarchy'] ) {
+						$items = $this->build_hierarchy( $matches );
 					}
 				}
 			}
@@ -1740,14 +1869,8 @@ if ( is_xtec_super_admin() ) {
 
 			$custom_toc_position = isset( $post->post_content ) ? has_shortcode( $post->post_content, 'toc' ) : false;
 
-			// Do not trigger the TOC on REST Requests unless explicitly enabled.
-			// This ensures that the TOC is not included in REST API responses by default.
-			// If the TOC inclusion in REST API responses is desired,
-			// it must be specifically activated via the plugin settings.
-			if ( ! $this->options['rest_toc_output'] ) {
-				if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
-					return false;
-				}
+			if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+				return false;
 			}
 
 			// do not trigger the TOC when displaying an XML/RSS feed
@@ -1757,114 +1880,28 @@ if ( is_xtec_super_admin() ) {
 
 			// if the shortcode was used, this bypasses many of the global options
 			if ( false !== $custom_toc_position ) {
-				// shortcode is used, make sure it adheres to the exclude from
-				// homepage option if we're on the homepage
-				if ( ! $this->options['include_homepage'] && is_front_page() ) {
-					return false;
-				} else {
-					return true;
-				}
+				return ! is_front_page();
 			} else {
 				if (
-					( in_array( get_post_type( $post ), $this->options['auto_insert_post_types'], true ) && $this->show_toc && ! is_search() && ! is_archive() && ! is_front_page() ) ||
-					( $this->options['include_homepage'] && is_front_page() )
+					in_array( get_post_type( $post ), $this->options['auto_insert_post_types'], true ) && $this->show_toc && ! is_search() && ! is_archive() && ! is_front_page()
 				) {
-					if ( $this->options['restrict_path'] ) {
-
-						// XTEC ************ AFEGIT - Added support for several directories when deciding whether the table of contents is displayed or not
-                        // 2021.04.22 @aginard
-                        $dirs = explode(',', $this->options['restrict_path']);
-                        foreach ($dirs as $dir) {
-                            if (strpos($_SERVER['REQUEST_URI'], $dir) !== false) {
-                                return false; // Stop on first true result
-                            }
-                        }
-                        // ************ FI
-
-						if ( strpos( $_SERVER['REQUEST_URI'], $this->options['restrict_path'] ) === 0 ) {
-							return true;
-						} else {
-							return false;
-						}
-					} else {
-						return true;
-					}
+					return true;
 				} else {
 					return false;
 				}
 			}
 		}
 
-		// XTEC ************ AFEGIT - This function returns the number of total headings from the html formatted $content.
-        // 2019.06.25 @nacho
-        public function total_headings(&$find, &$replace, $content = '') {
-            $matches = [];
-
-            // reset the internal collision collection as the_content may have been triggered elsewhere
-            // eg by themes or other plugins that need to read in content such as metadata fields in
-            // the head html tag, or to provide descriptions to twitter/facebook
-            $this->collision_collector = [];
-
-            if ( is_array($find) && is_array($replace) && $content ) {
-                // get all headings, excluding tables
-                // the html spec allows for a maximum of 6 heading depths
-                if ( !preg_match_all('/<table.*?>(.*?)<\/table>/si', $content, $matches)) {
-                    if ( preg_match_all('/(<h([1-6]{1})[^>]*>).*<\/h\2>/msuU', $content, $matches, PREG_SET_ORDER) ) {
-                        // remove undesired headings (if any) as defined by heading_levels
-                        if ( count($this->options['heading_levels']) != 6 ) {
-                            $new_matches = array();
-                            for ($i = 0; $i < count($matches); $i++) {
-                                if ( in_array($matches[$i][2], $this->options['heading_levels']) )
-                                    $new_matches[] = $matches[$i];
-                            }
-                            $matches = $new_matches;
-                        }
-                    }
-                }
-                // remove empty headings
-                $new_matches = [];
-                for ($i = 0; $i < count($matches); $i++) {
-                    if ( trim( strip_tags($matches[$i][0]) ) != false )
-                        $new_matches[] = $matches[$i];
-                }
-                if ( count($matches) != count($new_matches) )
-                    $matches = $new_matches;
-            }
-            return count($matches);
-        }
-        //************ FI
-
 		public function the_content( $content ) {
 			global $post;
 			$items               = '';
 			$css_classes         = '';
-			$anchor              = '';
 			$find                = [];
 			$replace             = [];
 			$custom_toc_position = strpos( $content, '<!--TOC-->' );
+			$toc_title_template  = $this->get_effective_heading_text( $post );
 
-			// XTEC ************ MODIFICAT - Check if we display the content with toc
-			// 2019.09.30 @nacho
-			$defined_headers = $this->options['start'];
-			$total_headers = $this->total_headings($find, $replace, $content);
-
-			$disable = false;
-			if ( strpos( get_the_content(), '[no_toc]' ) !== false) {
-				$disable = true;
-			}
-
-			$type = get_post_type();
-			if ($this->is_eligible($custom_toc_position) ||
-			(
-				($total_headers >= $defined_headers) && (in_array($type, $this->options['auto_insert_post_types'])) && ($disable == false)
-			)
-			) {
-			
-			//************ ORIGINAL
-			/*
-			if ( $this->is_eligible() ) {
-			*/
-			//************ FI
+			if ( $this->should_render_toc( $content ) ) {
 
 				$items = $this->extract_headings( $find, $replace, $content );
 
@@ -1914,12 +1951,23 @@ if ( is_xtec_super_admin() ) {
 								// do nothing
 						}
 
-						// bullets?
-						if ( $this->options['bullet_spacing'] ) {
-							$css_classes .= ' have_bullets';
-						} else {
-							$css_classes .= ' no_bullets';
+						switch ( $this->options['display_mode'] ) {
+							case 'sticky':
+								$css_classes .= ' toc_display_sticky';
+								break;
+
+							case 'floating':
+								$css_classes .= ' toc_display_floating toc_floating_' . $this->options['floating_side'];
+								break;
+
+							case 'inline':
+							default:
+								// do nothing
 						}
+
+							if ( 'compact' === $this->options['mobile_mode'] ) {
+								$css_classes .= ' toc_mobile_compact';
+							}
 
 						if ( $this->options['css_container_class'] ) {
 							$css_classes .= ' ' . $this->options['css_container_class'];
@@ -1935,7 +1983,7 @@ if ( is_xtec_super_admin() ) {
 						// add container, toc title and list items
 						$html = '<div id="toc_container" class="' . htmlentities( $css_classes, ENT_COMPAT, 'UTF-8' ) . '">';
 						if ( $this->options['show_heading_text'] ) {
-							$toc_title = htmlentities( $this->options['heading_text'], ENT_COMPAT, 'UTF-8' );
+							$toc_title = htmlentities( $toc_title_template, ENT_COMPAT, 'UTF-8' );
 							if ( false !== strpos( $toc_title, '%PAGE_TITLE%' ) ) {
 								$toc_title = str_replace( '%PAGE_TITLE%', get_the_title(), $toc_title );
 							}

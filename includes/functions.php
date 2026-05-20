@@ -1,5 +1,15 @@
 <?php
 
+if ( ! function_exists( 'is_xtec_super_admin' ) ) {
+	function is_xtec_super_admin() {
+		if ( function_exists( 'is_super_admin' ) && is_super_admin() ) {
+			return true;
+		}
+
+		return current_user_can( 'manage_options' );
+	}
+}
+
 /**
  * Returns a HTML formatted string of the table of contents without the surrounding UL or OL
  * tags to enable the theme editor to supply their own ID and/or classes to the outer list.
