@@ -8,7 +8,7 @@ Built from the ground up and with Wikipedia in mind, the table of contents by de
 
 This plugin is a great companion for content rich sites such as content management system oriented configurations. That said, bloggers also have the same benefits when writing long structured articles.
 
-Includes an administration options panel where you can customise settings like display position, define the minimum number of headings before an index is displayed, appearance, smooth scrolling, active section highlighting, desktop display modes, mobile display modes, selector-based exclusions, and more. For power users, the advanced options cover heading inclusion, anchor formatting, custom styling, and widget-only output. Using shortcodes, you can override default behaviour such as custom placement or hiding the table of contents on a specific piece of content.
+Includes an administration options panel where you can customise settings like display position, define the minimum number of headings before an index is displayed, appearance, smooth scrolling, active section highlighting, desktop display modes, mobile display modes, collapsible nested sections, selector-based exclusions, and more. The settings screen now separates Appearance from the main options and includes a dedicated Import / Export tab for moving WPTOC+ settings between sites or keeping a JSON backup. For power users, the advanced options cover heading inclusion, anchor formatting, custom styling, and widget-only output. Using shortcodes, you can override default behaviour such as custom placement or hiding the table of contents on a specific piece of content.
 
 Prefer to include the index in the sidebar? Go to Appearance > Widgets and drag the WPTOC+ widget to your desired sidebar and position.
 
@@ -19,9 +19,14 @@ Custom post types are supported, however, auto insertion works only when the_con
 * Generates a table of contents from page and post headings
 * Supports automatic insertion, shortcode placement, and widget output
 * Supports smooth scrolling and active section highlighting while readers scroll
-* Supports sticky sidebar and floating panel display modes for desktop readers
-* Supports a configurable display top offset so sticky and floating TOCs can clear fixed site headers
+* Supports a floating panel display mode for desktop readers
+* Supports a sticky full-width display mode that stays within the content column on desktop
+* Supports a sticky side-column display mode that preserves the TOC width while the article continues in its own column
+* Supports a configurable display top offset so floating and sticky TOCs can clear fixed site headers
+* Supports importing and exporting plugin settings from the WPTOC+ admin screen
 * Supports a mobile-only compact expandable TOC panel for smaller screens
+* Supports collapsible nested TOC branches when hierarchy mode is enabled, including a default collapsed or expanded starting state
+* Supports curated design presets such as Minimal, Editorial, Docs, and Card from the Appearance tab
 * Supports excluding headings that appear inside specific classes, blocks, or simple CSS selectors
 * Supports per-post overrides in the standard WordPress editor so authors can force show, force hide, or set a custom TOC title for one post only
 * Supports custom post types when their content is rendered through the standard content flow
@@ -32,10 +37,15 @@ Custom post types are supported, however, auto insertion works only when the_con
 * It does not integrate with WordPress.org plugin detail or update flows for this fork.
 * It does not generate TOCs in REST requests.
 * It does not guarantee that per-post override controls will appear inside third-party visual builders such as Divi. Those controls are currently available in the standard WordPress post and page edit screen.
-* Sticky and floating TOC display modes fall back to the standard inline TOC on smaller screens.
+* Floating and sticky desktop TOC display modes fall back to the standard inline TOC on smaller screens.
 * Floating panel mode can be placed on either the left or right side.
-* Sticky and floating modes can be nudged downward with the display top offset setting when a theme uses a fixed header.
+* Sticky full-width mode keeps the TOC inside the main content column instead of pinning it to the viewport edge.
+* Sticky side-column mode keeps the TOC in its rendered side rail, can be placed on the left or right, reserves the remaining article column from that insertion point downward, and stacks the TOC above the article on smaller screens.
+* Floating and sticky modes can be nudged downward with the display top offset setting when a theme uses a fixed header.
 * Mobile mode can switch to a compact expandable panel on smaller screens.
+* Nested TOC branches can collapse until expanded, while the active section path opens automatically.
+* Design presets can adjust the TOC's spacing, borders, and title treatment without replacing the current Presentation colour controls.
+* The Appearance tab separates layout, sizing, design presets, and Presentation styling from the main behavior settings.
 * Selector-based exclusions support simple selectors such as `.class-name`, `#section-id`, `tag`, `tag.class-name`, and `tag#section-id`.
 
 ## Notes For Site Owners

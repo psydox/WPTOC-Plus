@@ -3,7 +3,7 @@ Contributors: brianvrosario
 Tags: table of contents, indexes, toc, cms
 Requires at least: 3.2
 Tested up to: 6.7
-Stable tag: 2026.05.20.2338
+Stable tag: 2026.05.21.0220
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,7 +20,7 @@ Built from the ground up and with Wikipedia in mind, the table of contents by de
 
 This plugin is a great companion for content rich sites such as content management system oriented configurations.  That said, bloggers also have the same benefits when writing long structured articles.
 
-Includes an administration options panel where you can customise settings like display position, define the minimum number of headings before an index is displayed, appearance, smooth scrolling, active section highlighting, sticky or floating TOC modes, floating-side placement, display top offset, mobile mode, selector-based exclusions, and more.  For power users, the advanced options cover heading inclusion, anchor formatting, custom styling, and widget-only output.  Using shortcodes, you can override default behaviour such as custom placement or hiding the table of contents on a specific piece of content.
+Includes an administration options panel where you can customise settings like display position, define the minimum number of headings before an index is displayed, appearance, smooth scrolling, active section highlighting, floating TOC mode, sticky full-width TOC mode, sticky side-column TOC mode, floating-side placement, display top offset, mobile mode, collapsible nested sections, design presets, selector-based exclusions, and more.  The settings screen now separates Appearance into its own tab and also includes an Import / Export tab so you can move WPTOC+ settings between sites or keep a JSON backup.  For power users, the advanced options cover heading inclusion, anchor formatting, custom styling, and widget-only output.  Using shortcodes, you can override default behaviour such as custom placement or hiding the table of contents on a specific piece of content.
 
 Prefer to include the index in the sidebar?  Go to Appearance > Widgets and drag the WPTOC+ widget to your desired sidebar and position.
 
@@ -30,9 +30,13 @@ WPTOC+ is intentionally focused on table of contents features only.  This fork d
 
 Per-post overrides are supported through the standard WordPress post and page edit screen.  Authors can force show, force hide, or set a custom TOC title per post.  These controls may not appear inside third-party builders such as Divi, so set them in the normal editor when needed.
 
-Sticky and floating display modes are intended for desktop layouts and automatically fall back to the standard inline TOC on smaller screens.  Floating mode can be placed on either the left or right side, and both display modes support a dedicated display top offset to clear sticky theme headers.
+Floating and sticky desktop display modes automatically fall back to the standard inline TOC on smaller screens.  Floating mode can be placed on either the left or right side, sticky full-width mode stays inside the main content column, and sticky side-column mode can also be placed on either side while keeping the TOC in its rendered rail and the remaining article content in a dedicated adjacent column.  On smaller screens, sticky side-column mode now stacks the TOC above the article content.  All of these modes support a dedicated display top offset to clear sticky theme headers.
 
 The mobile mode setting can switch the TOC into a compact expandable panel on smaller screens so readers can open it only when they need it.
+
+The collapsible nested sections setting can hide deep TOC branches until readers expand them, while the active heading path opens automatically during scrolling.  Site owners can also choose whether nested branches start collapsed or expanded.
+
+The design preset setting adds curated structural styles such as Minimal, Editorial, Docs, and Card without replacing the current Presentation colour controls.
 
 Selector-based exclusions let you ignore headings inside specific blocks or containers such as `.wp-block-cover`, `.et_pb_toggle`, `section.hero`, or `div.reusable-banner`.
 
@@ -89,17 +93,25 @@ WPTOC+ is currently maintained by Brian V. Rosario. This fork builds on the orig
 = Unreleased =
 * Added active section highlighting for TOC links while scrolling
 * Added per-post TOC override controls in the standard WordPress editor
-* Added sticky sidebar and floating panel TOC display modes for desktop layouts
+* Added a floating panel TOC display mode for desktop layouts
+* Added a sticky full-width TOC display mode for desktop layouts
+* Added a sticky side-column TOC display mode for desktop layouts
+* Added left or right placement for sticky side-column mode and improved its mobile fallback so the TOC stays above the article on smaller screens
+* Added an option to collapse and expand nested TOC sections while keeping the active branch open
+* Added a setting to choose whether collapsible nested sections start collapsed or expanded
+* Added an Import / Export settings tab with JSON backup and restore support
+* Split Appearance into its own settings tab
 * Added left or right placement for floating panel mode and improved top offset handling for fixed headers
-* Added a dedicated display top offset setting for sticky and floating modes
+* Added a dedicated display top offset setting for floating mode
 * Added a compact expandable mobile TOC mode for smaller screens
 * Added selector or class based heading exclusions for specific containers and blocks
+* Added Appearance design presets for curated TOC styling
 * Removed sitemap-related functionality from this fork to keep the project TOC-focused
 * Removed several low-value legacy settings from the admin UI and cleaned their runtime paths
 * Updated the admin settings experience and save feedback
 * Switched this fork to the maintained unminified frontend assets used by the project
 
-= 2026.05.20.2338 =
+= 2026.05.21.0220 =
 * Released: 20 May 2026
 * Switched this fork to public calendar versioning in the format YYYY.MM.DD.HHMM
 

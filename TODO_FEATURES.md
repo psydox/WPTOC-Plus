@@ -1,12 +1,11 @@
 # WPTOC+ Feature Ideas
 
-## Priority Roadmap
+## Planned Features
 
-1. Active section highlighting
-2. Per-post TOC override
-3. Sticky or floating TOC mode
-4. Expand/collapse nested sections
-5. Gutenberg block
+1. Gutenberg block
+2. Copy link to heading
+3. Reading progress integration
+4. Accessibility enhancements
 
 ## Feature Suggestions
 
@@ -26,8 +25,8 @@ Why it matters:
 - Gives authors finer control without touching global settings
 - Fits typical WordPress editorial workflows
 
-### 3. Sticky or Floating TOC Mode
-Add an optional desktop sticky sidebar or floating TOC layout for long-form content.
+### 3. Floating TOC Mode
+Implemented with a desktop floating panel layout for long-form content.
 
 Why it matters:
 - Keeps navigation visible while reading
@@ -35,7 +34,7 @@ Why it matters:
 - Adds a clear premium-feeling feature without changing core parsing logic
 
 ### 4. Expand/Collapse Nested Sections
-Allow deep nested TOC branches to collapse until opened or until their parent section becomes active.
+Implemented as an optional setting that collapses nested TOC branches until opened, while the active section path expands automatically.
 
 Why it matters:
 - Prevents very long TOCs from becoming visually heavy
@@ -83,7 +82,7 @@ Why it matters:
 - Can be built from the same heading map used by the TOC
 
 ### 10. Design Presets
-Add a set of curated TOC design presets such as Minimal, Editorial, Docs, and Card.
+Implemented as an Appearance setting with curated TOC presets such as Minimal, Editorial, Docs, and Card.
 
 Why it matters:
 - Makes customization easier without requiring CSS knowledge
@@ -99,7 +98,7 @@ Why it matters:
 - Low risk and high value
 
 ### 12. Import/Export Settings
-Allow users to export and import plugin settings across environments or sites.
+Implemented as an Import / Export admin tab with JSON backup and restore for plugin settings.
 
 Why it matters:
 - Useful for agencies and multi-site operators
@@ -108,8 +107,7 @@ Why it matters:
 
 ## Suggested Build Order
 
-1. Implement active section highlighting first
-2. Add per-post override controls next
-3. Sticky or floating TOC mode implemented
-4. Add nested section collapse/expand behavior
-5. Build a Gutenberg block after runtime behavior is stable
+1. Build a Gutenberg block
+2. Add copy link to heading
+3. Add reading progress integration
+4. Finish with accessibility enhancements across the TOC UI

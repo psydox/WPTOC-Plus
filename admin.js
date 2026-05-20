@@ -1,20 +1,39 @@
 jQuery(document).ready(function($) {
 	var $adminForm = $('form.wptoc-admin-form');
 	var $successAlert = $('.wptoc-admin-alert.is-success');
+	var $tabItems = $('ul#tabbed-nav li').not('.url');
+	var $tabContents = $('.tab_content');
+	var $activeTabField = $('#wptoc_active_tab');
+	var $overlayTitle = $('.wptoc-admin-save-overlay__title');
+	var $overlayText = $('.wptoc-admin-save-overlay__text');
+	var defaultOverlayTitle = $overlayTitle.data('default-title') || $overlayTitle.text();
+	var defaultOverlayText = $overlayText.data('default-text') || $overlayText.text();
+
+	function activateTab(tabSelector) {
+		var $targetLink = $('ul#tabbed-nav a[href="' + tabSelector + '"]').first();
+
+		if ( !$targetLink.length ) {
+			tabSelector = '#tab1';
+			$targetLink = $('ul#tabbed-nav a[href="#tab1"]').first();
+		}
+
+		$tabItems.removeClass('active');
+		$targetLink.parent('li').addClass('active');
+		$tabContents.hide();
+		$(tabSelector).show();
+		$activeTabField.val(tabSelector.replace('#', ''));
+	}
 
 	$('.tab_content, #toc_for_developers, div.more_toc_options.disabled, tr.disabled').hide();
-	$('ul#tabbed-nav li:first').addClass('active').show(); // show first tab
-	$('.tab_content:first').show(); // show first tab content
+	activateTab('#' + ($activeTabField.val() || 'tab1'));
 
 	$('ul#tabbed-nav li').click(function(event) {
 		if ( !$(this).hasClass('url') ) {
 			event.preventDefault();
-			$('ul#tabbed-nav li').removeClass('active');
-			$(this).addClass('active');
-			$('.tab_content').hide();
 
 			var activeTab = $(this).find('a').attr('href');
-			$(activeTab).fadeIn();
+			activateTab(activeTab);
+			$(activeTab).hide().fadeIn();
 		}
 	});
 	
@@ -52,6 +71,7 @@ jQuery(document).ready(function($) {
 	$adminForm.on('submit', function() {
 		var $form = $(this);
 		var $submit = $form.find('.wptoc-admin-submit .button-primary');
+		var submitter = $form.data('submitter') || {};
 		var originalLabel = $submit.data('original-label');
 
 		if ( ! originalLabel ) {
@@ -63,7 +83,18 @@ jQuery(document).ready(function($) {
 		}
 
 		$form.addClass('is-saving');
+		$overlayTitle.text(submitter.busyTitle || defaultOverlayTitle);
+		$overlayText.text(submitter.busyText || defaultOverlayText);
 		$submit.prop('disabled', true).val('Saving...');
+	});
+
+	$adminForm.find(':submit').on('click', function() {
+		var $button = $(this);
+
+		$adminForm.data('submitter', {
+			busyTitle: $button.data('busy-title') || defaultOverlayTitle,
+			busyText: $button.data('busy-text') || defaultOverlayText
+		});
 	});
 
 	if ( $successAlert.length ) {

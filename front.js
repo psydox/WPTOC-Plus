@@ -208,6 +208,104 @@ jQuery(document).ready(function($) {
 		$container.find('a.is-active-link').removeClass('is-active-link');
 	}
 
+	function setBranchExpanded($item, expanded, animate) {
+		var $branch = $item.children('ul').first();
+		var $toggle = $item.children('.toc_branch_toggle').first();
+		var toggleLabel = expanded ? 'Hide subsections' : 'Show subsections';
+		var method = expanded ? 'slideDown' : 'slideUp';
+
+		if ( !$branch.length ) {
+			return;
+		}
+
+		$item.toggleClass('is-expanded', expanded).toggleClass('is-collapsed', !expanded);
+		$toggle.attr({
+			'aria-expanded': expanded ? 'true' : 'false',
+			'aria-label': toggleLabel,
+			'title': toggleLabel
+		});
+		$toggle.find('.toc_branch_toggle_text').text(toggleLabel);
+
+		if ( animate ) {
+			$branch.stop(true, true)[method](160);
+			return;
+		}
+
+		if ( expanded ) {
+			$branch.show();
+			return;
+		}
+
+		$branch.hide();
+	}
+
+	function syncCollapsibleBranches($container, animate) {
+		var expandByDefault;
+
+		if ( !$container.hasClass('toc_collapsible_subsections') ) {
+			return;
+		}
+
+		expandByDefault = $container.hasClass('toc_collapsible_default_open');
+
+		$container.find('li.is-collapsible').each(function() {
+			var $item = $(this);
+			var manualState = $item.data('tocBranchManualState');
+			var shouldExpand = expandByDefault || $item.hasClass('is-active') || $item.hasClass('is-active-parent');
+
+			if ( manualState === 'expanded' ) {
+				shouldExpand = true;
+			} else if ( manualState === 'collapsed' && !$item.hasClass('is-active') && !$item.hasClass('is-active-parent') ) {
+				shouldExpand = false;
+			}
+
+			setBranchExpanded($item, shouldExpand, animate && typeof manualState !== 'undefined');
+		});
+	}
+
+	function initializeCollapsibleSections($container) {
+		if ( !$container.hasClass('toc_collapsible_subsections') ) {
+			return;
+		}
+
+		$container.find('li').has('> ul').each(function() {
+			var $item = $(this);
+			var $link = $item.children('a').first();
+			var $toggle = $item.children('.toc_branch_toggle').first();
+
+			$item.addClass('is-collapsible');
+
+			if ( !$toggle.length ) {
+				$toggle = $('<button />', {
+					type: 'button',
+					'class': 'toc_branch_toggle',
+					'aria-expanded': 'false',
+					'aria-label': 'Show subsections',
+					'title': 'Show subsections',
+					html: '<span class="toc_branch_toggle_icon" aria-hidden="true"></span><span class="toc_branch_toggle_text">Show subsections</span>'
+				});
+
+				if ( $link.length ) {
+					$link.after($toggle);
+				} else {
+					$item.prepend($toggle);
+				}
+			}
+		});
+
+		syncCollapsibleBranches($container, false);
+
+		$container.off('click.tocplusBranches').on('click.tocplusBranches', '.toc_branch_toggle', function(event) {
+			var $toggle = $(this);
+			var $item = $toggle.parent('li');
+			var expanded = !$item.hasClass('is-expanded');
+
+			event.preventDefault();
+			$item.data('tocBranchManualState', expanded ? 'expanded' : 'collapsed');
+			setBranchExpanded($item, expanded, true);
+		});
+	}
+
 	function setActiveHeading($container, entry) {
 		clearActiveHeading($container);
 
@@ -218,6 +316,7 @@ jQuery(document).ready(function($) {
 		entry.$item.addClass('is-active');
 		entry.$link.addClass('is-active-link');
 		entry.$item.parents('li').addClass('is-active-parent');
+		syncCollapsibleBranches($container, true);
 	}
 
 	function createActiveHeadingUpdater($container, eventNamespace) {
@@ -372,92 +471,6 @@ jQuery(document).ready(function($) {
 		setMobileCompactState($container, $list, expanded, false);
 	}
 
-	function resetStickyFallback($container) {
-		$container.removeClass('is-sticky-fixed is-sticky-bottom').css({
-			left: '',
-			right: '',
-			width: '',
-			top: '',
-			bottom: ''
-		});
-		$container.removeData('tocStickyState');
-	}
-
-	function applyStickyFallback($container) {
-		var viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
-		var topOffset;
-		var stickyState;
-		var startTop;
-		var parentTop;
-		var parentBottom;
-		var containerHeight;
-		var containerWidth;
-		var scrollTop;
-		var containerLeft;
-		var viewportRight;
-		var $limitContainer;
-
-		if ( !$container.hasClass('toc_display_sticky') ) {
-			return;
-		}
-
-		if ( viewportWidth < 1100 ) {
-			resetStickyFallback($container);
-			return;
-		}
-
-		$limitContainer = $container.parent();
-
-		if ( !$limitContainer.length ) {
-			return;
-		}
-
-		topOffset = getViewportTopOffset();
-		stickyState = $container.data('tocStickyState') || {};
-		parentTop = $limitContainer.offset().top;
-		parentBottom = parentTop + $limitContainer.outerHeight();
-		containerHeight = $container.outerHeight();
-
-		if ( !$container.hasClass('is-sticky-fixed') && !$container.hasClass('is-sticky-bottom') ) {
-			stickyState = {
-				startTop: $container.offset().top - topOffset,
-				left: $container.offset().left,
-				width: $container.outerWidth()
-			};
-			$container.data('tocStickyState', stickyState);
-		}
-
-		containerWidth = stickyState.width || $container.outerWidth();
-		containerLeft = stickyState.left || $container.offset().left;
-		viewportRight = viewportWidth - ( containerLeft + containerWidth );
-		startTop = stickyState.startTop;
-		scrollTop = $(window).scrollTop();
-
-		if ( scrollTop <= startTop ) {
-			resetStickyFallback($container);
-			return;
-		}
-
-		if ( scrollTop + topOffset + containerHeight >= parentBottom ) {
-			$limitContainer.css('position', 'relative');
-			$container.removeClass('is-sticky-fixed').addClass('is-sticky-bottom').css({
-				left: '',
-				right: '',
-				width: containerWidth + 'px',
-				top: '',
-				bottom: '0'
-			});
-			return;
-		}
-
-		$container.removeClass('is-sticky-bottom').addClass('is-sticky-fixed').css({
-			width: containerWidth + 'px',
-			top: topOffset + 'px',
-			bottom: '',
-			left: containerLeft + 'px',
-			right: viewportRight + 'px'
-		});
-	}
 
 	function applyInitialToggleState($container, $list, invert) {
 		var visibilityText;
@@ -495,22 +508,17 @@ jQuery(document).ready(function($) {
 		var invert = typeof tocplus.visibility_hide_by_default !== 'undefined';
 
 		repairTOCLinks($container);
+		initializeCollapsibleSections($container);
 		createActiveHeadingUpdater($container, eventNamespace);
 
 		$(window)
 			.off(viewportEventNamespace)
 			.on('resize' + viewportEventNamespace + ' load' + viewportEventNamespace + ' scroll' + viewportEventNamespace, function(event) {
-				if ( event.type === 'resize' || event.type === 'load' ) {
-					resetStickyFallback($container);
-				}
-
 				applyContainerViewportStyles($container);
-				applyStickyFallback($container);
 				applyMobileCompactMode($container, $list);
 			});
 
 		applyContainerViewportStyles($container);
-		applyStickyFallback($container);
 		applyMobileCompactMode($container, $list);
 
 		if ( tocplus.smooth_scroll === 1 ) {

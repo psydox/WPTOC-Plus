@@ -42,6 +42,8 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 
 				'auto_insert_post_types'             => [ 'page' ],
 				'show_heirarchy'                     => true,
+				'collapsible_subsections'            => false,
+				'collapse_subsections_by_default'    => true,
 
 				// XTEC ************ MODIFICAT - Change default settings
 				// 2017.05.04 @xaviernietosanchez
@@ -88,6 +90,7 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 
 				'font_size'                          => '95',
 				'font_size_units'                    => '%',
+				'design_preset'                      => 'default',
 				'theme'                              => TOC_THEME_GREY,
 				'custom_background_colour'           => TOC_DEFAULT_BACKGROUND_COLOUR,
 				'custom_border_colour'               => TOC_DEFAULT_BORDER_COLOUR,
@@ -108,6 +111,15 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 
 			$options       = get_option( 'toc-options', $this->defaults );
 			$this->options = wp_parse_args( $options, $this->defaults );
+
+			if ( ! in_array( $this->options['display_mode'], [ 'inline', 'floating', 'sticky', 'sticky-column' ], true ) ) {
+				$this->options['display_mode'] = $this->defaults['display_mode'];
+			}
+
+			unset(
+				$this->options['sidebar_injection_selector'],
+				$this->options['sidebar_injection_behavior']
+			);
 
 			add_action( 'plugins_loaded', [ $this, 'plugins_loaded' ] );
 			add_action( 'wp_enqueue_scripts', [ $this, 'wp_enqueue_scripts' ] );
@@ -582,7 +594,6 @@ jQuery(function($) {
 			if ( $this->defaults['display_top_offset'] !== $this->options['display_top_offset'] ) {
 				$js_vars['display_top_offset'] = esc_js( $this->options['display_top_offset'] );
 			}
-
 			if ( count( $js_vars ) > 0 ) {
 				wp_localize_script(
 					'toc-front',
@@ -730,6 +741,8 @@ jQuery(function($) {
 			$heading_text                  = isset( $_POST['heading_text'] ) ? stripslashes( trim( sanitize_text_field( wp_unslash( $_POST['heading_text'] ) ) ) ) : $this->defaults['heading_text'];
 			$auto_insert_post_types        = isset( $_POST['auto_insert_post_types'] ) ? array_map( 'sanitize_text_field', array_map( 'wp_unslash', (array) $_POST['auto_insert_post_types'] ) ) : []; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash
 			$show_heirarchy                = isset( $_POST['show_heirarchy'] ) && (bool) $_POST['show_heirarchy'];
+			$collapsible_subsections       = isset( $_POST['collapsible_subsections'] ) && (bool) $_POST['collapsible_subsections'];
+			$collapse_subsections_by_default = isset( $_POST['collapse_subsections_by_default'] ) && (bool) $_POST['collapse_subsections_by_default'];
 			$ordered_list                  = isset( $_POST['ordered_list'] ) && (bool) $_POST['ordered_list'];
 			$smooth_scroll                 = isset( $_POST['smooth_scroll'] ) && (bool) $_POST['smooth_scroll'];
 			$smooth_scroll_offset          = isset( $_POST['smooth_scroll_offset'] ) ? intval( $_POST['smooth_scroll_offset'] ) : $this->defaults['smooth_scroll_offset'];
@@ -748,6 +761,7 @@ jQuery(function($) {
 			$wrapping                      = isset( $_POST['wrapping'] ) ? intval( $_POST['wrapping'] ) : $this->defaults['wrapping'];
 			$font_size                     = isset( $_POST['font_size'] ) ? floatval( $_POST['font_size'] ) : $this->defaults['font_size'];
 			$font_size_units               = isset( $_POST['font_size_units'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['font_size_units'] ) ) ) : $this->defaults['font_size_units'];
+			$design_preset                 = isset( $_POST['design_preset'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['design_preset'] ) ) ) : $this->defaults['design_preset'];
 			$theme                         = isset( $_POST['theme'] ) ? intval( $_POST['theme'] ) : $this->defaults['theme'];
 			$lowercase                     = isset( $_POST['lowercase'] ) && (bool) $_POST['lowercase'];
 			$hyphenate                     = isset( $_POST['hyphenate'] ) && (bool) $_POST['hyphenate'];
@@ -755,7 +769,7 @@ jQuery(function($) {
 			$heading_levels                = isset( $_POST['heading_levels'] ) ? array_map( 'intval', (array) $_POST['heading_levels'] ) : [];
 			$exclude                       = isset( $_POST['exclude'] ) ? stripslashes( trim( sanitize_text_field( wp_unslash( $_POST['exclude'] ) ) ) ) : $this->defaults['exclude'];
 
-			if ( ! in_array( $display_mode, [ 'inline', 'sticky', 'floating' ], true ) ) {
+			if ( ! in_array( $display_mode, [ 'inline', 'floating', 'sticky', 'sticky-column' ], true ) ) {
 				$display_mode = $this->defaults['display_mode'];
 			}
 
@@ -767,6 +781,10 @@ jQuery(function($) {
 				$floating_side = $this->defaults['floating_side'];
 			}
 
+			if ( ! in_array( $design_preset, $this->get_allowed_design_presets(), true ) ) {
+				$design_preset = $this->defaults['design_preset'];
+			}
+
 			$this->options = array_merge(
 				$this->options,
 				[
@@ -776,6 +794,8 @@ jQuery(function($) {
 					'heading_text'                  => $heading_text,
 					'auto_insert_post_types'        => $auto_insert_post_types,
 					'show_heirarchy'                => $show_heirarchy,
+					'collapsible_subsections'       => $collapsible_subsections,
+					'collapse_subsections_by_default' => $collapse_subsections_by_default,
 					'ordered_list'                  => $ordered_list,
 					'smooth_scroll'                 => $smooth_scroll,
 					'smooth_scroll_offset'          => $smooth_scroll_offset,
@@ -794,6 +814,7 @@ jQuery(function($) {
 					'wrapping'                      => $wrapping,
 					'font_size'                     => $font_size,
 					'font_size_units'               => $font_size_units,
+					'design_preset'                 => $design_preset,
 					'theme'                         => $theme,
 					'custom_background_colour'      => $custom_background_colour,
 					'custom_border_colour'          => $custom_border_colour,
@@ -814,7 +835,9 @@ jQuery(function($) {
 				$this->options['bullet_spacing'],
 				$this->options['include_homepage'],
 				$this->options['restrict_path'],
-				$this->options['rest_toc_output']
+				$this->options['rest_toc_output'],
+				$this->options['sidebar_injection_selector'],
+				$this->options['sidebar_injection_behavior']
 			);
 
 			// update_option will return false if no changes were made
@@ -824,12 +847,214 @@ jQuery(function($) {
 		}
 
 
+		private function get_export_settings_payload() {
+			$payload = [
+				'plugin'      => 'WPTOC+',
+				'version'     => TOC_VERSION,
+				'exported_at' => current_time( 'mysql' ),
+				'options'     => $this->options,
+			];
+
+			return wp_json_encode( $payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+		}
+
+
+		private function get_toc_width_value() {
+			if ( 'User defined' !== $this->options['width'] ) {
+				return $this->options['width'];
+			}
+
+			return $this->options['width_custom'] . $this->options['width_custom_units'];
+		}
+
+
+		private function get_allowed_design_presets() {
+			return [ 'default', 'minimal', 'editorial', 'docs', 'card' ];
+		}
+
+
+		private function sanitize_imported_options( $imported_options ) {
+			if ( ! is_array( $imported_options ) ) {
+				return false;
+			}
+
+			$raw_options = wp_parse_args( $imported_options, $this->defaults );
+
+			$custom_background_colour    = ! empty( $raw_options['custom_background_colour'] ) ? $this->hex_value( trim( (string) $raw_options['custom_background_colour'] ), TOC_DEFAULT_BACKGROUND_COLOUR ) : TOC_DEFAULT_BACKGROUND_COLOUR;
+			$custom_border_colour        = ! empty( $raw_options['custom_border_colour'] ) ? $this->hex_value( trim( (string) $raw_options['custom_border_colour'] ), TOC_DEFAULT_BORDER_COLOUR ) : TOC_DEFAULT_BORDER_COLOUR;
+			$custom_title_colour         = ! empty( $raw_options['custom_title_colour'] ) ? $this->hex_value( trim( (string) $raw_options['custom_title_colour'] ), TOC_DEFAULT_TITLE_COLOUR ) : TOC_DEFAULT_TITLE_COLOUR;
+			$custom_links_colour         = ! empty( $raw_options['custom_links_colour'] ) ? $this->hex_value( trim( (string) $raw_options['custom_links_colour'] ), TOC_DEFAULT_LINKS_COLOUR ) : TOC_DEFAULT_LINKS_COLOUR;
+			$custom_links_hover_colour   = ! empty( $raw_options['custom_links_hover_colour'] ) ? $this->hex_value( trim( (string) $raw_options['custom_links_hover_colour'] ), TOC_DEFAULT_LINKS_HOVER_COLOUR ) : TOC_DEFAULT_LINKS_HOVER_COLOUR;
+			$custom_links_visited_colour = ! empty( $raw_options['custom_links_visited_colour'] ) ? $this->hex_value( trim( (string) $raw_options['custom_links_visited_colour'] ), TOC_DEFAULT_LINKS_VISITED_COLOUR ) : TOC_DEFAULT_LINKS_VISITED_COLOUR;
+
+			$position                   = isset( $raw_options['position'] ) ? intval( $raw_options['position'] ) : $this->defaults['position'];
+			$start                      = isset( $raw_options['start'] ) ? intval( $raw_options['start'] ) : $this->defaults['start'];
+			$show_heading_text          = ! empty( $raw_options['show_heading_text'] );
+			$heading_text               = isset( $raw_options['heading_text'] ) ? trim( sanitize_text_field( (string) $raw_options['heading_text'] ) ) : $this->defaults['heading_text'];
+			$auto_insert_post_types     = isset( $raw_options['auto_insert_post_types'] ) ? array_map( 'sanitize_text_field', (array) $raw_options['auto_insert_post_types'] ) : $this->defaults['auto_insert_post_types'];
+			$show_heirarchy             = ! empty( $raw_options['show_heirarchy'] );
+			$collapsible_subsections    = ! empty( $raw_options['collapsible_subsections'] );
+			$collapse_subsections_by_default = ! empty( $raw_options['collapse_subsections_by_default'] );
+			$ordered_list               = ! empty( $raw_options['ordered_list'] );
+			$smooth_scroll              = ! empty( $raw_options['smooth_scroll'] );
+			$smooth_scroll_offset       = isset( $raw_options['smooth_scroll_offset'] ) ? intval( $raw_options['smooth_scroll_offset'] ) : $this->defaults['smooth_scroll_offset'];
+			$visibility                 = ! empty( $raw_options['visibility'] );
+			$visibility_show            = isset( $raw_options['visibility_show'] ) ? trim( sanitize_text_field( (string) $raw_options['visibility_show'] ) ) : $this->defaults['visibility_show'];
+			$visibility_hide            = isset( $raw_options['visibility_hide'] ) ? trim( sanitize_text_field( (string) $raw_options['visibility_hide'] ) ) : $this->defaults['visibility_hide'];
+			$visibility_hide_by_default = ! empty( $raw_options['visibility_hide_by_default'] );
+			$display_mode               = isset( $raw_options['display_mode'] ) ? trim( sanitize_text_field( (string) $raw_options['display_mode'] ) ) : $this->defaults['display_mode'];
+			$mobile_mode                = isset( $raw_options['mobile_mode'] ) ? trim( sanitize_text_field( (string) $raw_options['mobile_mode'] ) ) : $this->defaults['mobile_mode'];
+			$floating_side              = isset( $raw_options['floating_side'] ) ? trim( sanitize_text_field( (string) $raw_options['floating_side'] ) ) : $this->defaults['floating_side'];
+			$display_top_offset         = isset( $raw_options['display_top_offset'] ) ? max( 0, intval( $raw_options['display_top_offset'] ) ) : $this->defaults['display_top_offset'];
+			$exclude_selectors          = isset( $raw_options['exclude_selectors'] ) ? trim( sanitize_text_field( (string) $raw_options['exclude_selectors'] ) ) : $this->defaults['exclude_selectors'];
+			$width                      = isset( $raw_options['width'] ) ? trim( sanitize_text_field( (string) $raw_options['width'] ) ) : $this->defaults['width'];
+			$width_custom               = isset( $raw_options['width_custom'] ) ? floatval( $raw_options['width_custom'] ) : $this->defaults['width_custom'];
+			$width_custom_units         = isset( $raw_options['width_custom_units'] ) ? trim( sanitize_text_field( (string) $raw_options['width_custom_units'] ) ) : $this->defaults['width_custom_units'];
+			$wrapping                   = isset( $raw_options['wrapping'] ) ? intval( $raw_options['wrapping'] ) : $this->defaults['wrapping'];
+			$font_size                  = isset( $raw_options['font_size'] ) ? floatval( $raw_options['font_size'] ) : $this->defaults['font_size'];
+			$font_size_units            = isset( $raw_options['font_size_units'] ) ? trim( sanitize_text_field( (string) $raw_options['font_size_units'] ) ) : $this->defaults['font_size_units'];
+			$design_preset              = isset( $raw_options['design_preset'] ) ? trim( sanitize_text_field( (string) $raw_options['design_preset'] ) ) : $this->defaults['design_preset'];
+			$theme                      = isset( $raw_options['theme'] ) ? intval( $raw_options['theme'] ) : $this->defaults['theme'];
+			$lowercase                  = ! empty( $raw_options['lowercase'] );
+			$hyphenate                  = ! empty( $raw_options['hyphenate'] );
+			$exclude_css                = ! empty( $raw_options['exclude_css'] );
+			$heading_levels             = isset( $raw_options['heading_levels'] ) ? array_map( 'intval', (array) $raw_options['heading_levels'] ) : $this->defaults['heading_levels'];
+			$exclude                    = isset( $raw_options['exclude'] ) ? trim( sanitize_text_field( (string) $raw_options['exclude'] ) ) : $this->defaults['exclude'];
+			$css_container_class        = isset( $raw_options['css_container_class'] ) ? trim( sanitize_text_field( (string) $raw_options['css_container_class'] ) ) : $this->defaults['css_container_class'];
+			$show_toc_in_widget_only    = ! empty( $raw_options['show_toc_in_widget_only'] );
+			$show_toc_widget_post_types = isset( $raw_options['show_toc_in_widget_only_post_types'] ) ? array_map( 'sanitize_text_field', (array) $raw_options['show_toc_in_widget_only_post_types'] ) : $this->defaults['show_toc_in_widget_only_post_types'];
+
+			if ( ! in_array( $display_mode, [ 'inline', 'floating', 'sticky', 'sticky-column' ], true ) ) {
+				$display_mode = $this->defaults['display_mode'];
+			}
+
+			if ( ! in_array( $mobile_mode, [ 'inline', 'compact' ], true ) ) {
+				$mobile_mode = $this->defaults['mobile_mode'];
+			}
+
+			if ( ! in_array( $floating_side, [ 'left', 'right' ], true ) ) {
+				$floating_side = $this->defaults['floating_side'];
+			}
+
+			if ( ! in_array( $design_preset, $this->get_allowed_design_presets(), true ) ) {
+				$design_preset = $this->defaults['design_preset'];
+			}
+
+			return [
+				'position'                      => $position,
+				'start'                         => $start,
+				'show_heading_text'             => $show_heading_text,
+				'heading_text'                  => $heading_text,
+				'auto_insert_post_types'        => $auto_insert_post_types,
+				'show_heirarchy'                => $show_heirarchy,
+				'collapsible_subsections'       => $collapsible_subsections,
+				'collapse_subsections_by_default' => $collapse_subsections_by_default,
+				'ordered_list'                  => $ordered_list,
+				'smooth_scroll'                 => $smooth_scroll,
+				'smooth_scroll_offset'          => $smooth_scroll_offset,
+				'visibility'                    => $visibility,
+				'visibility_show'               => $visibility_show,
+				'visibility_hide'               => $visibility_hide,
+				'visibility_hide_by_default'    => $visibility_hide_by_default,
+				'display_mode'                  => $display_mode,
+				'mobile_mode'                   => $mobile_mode,
+				'floating_side'                 => $floating_side,
+				'display_top_offset'            => $display_top_offset,
+				'exclude_selectors'             => $exclude_selectors,
+				'width'                         => $width,
+				'width_custom'                  => $width_custom,
+				'width_custom_units'            => $width_custom_units,
+				'wrapping'                      => $wrapping,
+				'font_size'                     => $font_size,
+				'font_size_units'               => $font_size_units,
+				'design_preset'                 => $design_preset,
+				'theme'                         => $theme,
+				'custom_background_colour'      => $custom_background_colour,
+				'custom_border_colour'          => $custom_border_colour,
+				'custom_title_colour'           => $custom_title_colour,
+				'custom_links_colour'           => $custom_links_colour,
+				'custom_links_hover_colour'     => $custom_links_hover_colour,
+				'custom_links_visited_colour'   => $custom_links_visited_colour,
+				'lowercase'                     => $lowercase,
+				'hyphenate'                     => $hyphenate,
+				'exclude_css'                   => $exclude_css,
+				'exclude'                       => $exclude,
+				'heading_levels'                => $heading_levels,
+				'css_container_class'           => $css_container_class,
+				'show_toc_in_widget_only'       => $show_toc_in_widget_only,
+				'show_toc_in_widget_only_post_types' => $show_toc_widget_post_types,
+			];
+		}
+
+
+		private function import_admin_options() {
+			global $post_id;
+
+			if ( ! isset( $_POST['toc-admin-options'] ) ) {
+				return new WP_Error( 'missing_nonce', __( 'Import failed security check.', 'table-of-contents-plus' ) );
+			}
+
+			if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['toc-admin-options'] ) ), plugin_basename( __FILE__ ) ) ) {
+				return new WP_Error( 'invalid_nonce', __( 'Import failed security check.', 'table-of-contents-plus' ) );
+			}
+
+			if ( ! current_user_can( 'manage_options', $post_id ) ) {
+				return new WP_Error( 'invalid_permissions', __( 'You do not have permission to import settings.', 'table-of-contents-plus' ) );
+			}
+
+			$import_blob = isset( $_POST['settings_import_blob'] ) ? trim( wp_unslash( $_POST['settings_import_blob'] ) ) : '';
+
+			if ( '' === $import_blob ) {
+				return new WP_Error( 'empty_import', __( 'Paste a WPTOC+ settings export before importing.', 'table-of-contents-plus' ) );
+			}
+
+			$decoded = json_decode( $import_blob, true );
+
+			if ( ! is_array( $decoded ) ) {
+				return new WP_Error( 'invalid_json', __( 'The import data is not valid JSON.', 'table-of-contents-plus' ) );
+			}
+
+			$imported_options = isset( $decoded['options'] ) && is_array( $decoded['options'] ) ? $decoded['options'] : $decoded;
+			$sanitized        = $this->sanitize_imported_options( $imported_options );
+
+			if ( false === $sanitized ) {
+				return new WP_Error( 'invalid_import', __( 'The import data does not contain a valid WPTOC+ settings bundle.', 'table-of-contents-plus' ) );
+			}
+
+			$this->options = array_merge( $this->defaults, $sanitized );
+
+			unset(
+				$this->options['fragment_prefix'],
+				$this->options['bullet_spacing'],
+				$this->options['include_homepage'],
+				$this->options['restrict_path'],
+				$this->options['rest_toc_output']
+			);
+
+			update_option( 'toc-options', $this->options );
+
+			return true;
+		}
+
+
 		public function admin_options() {
 			$page = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			$msg  = '';
+			$active_tab = isset( $_POST['wptoc_active_tab'] ) ? sanitize_text_field( wp_unslash( $_POST['wptoc_active_tab'] ) ) : 'tab1';
+			$export_settings_payload = $this->get_export_settings_payload();
 
 			// was there a form submission, if so, do security checks and try to save form
-			if ( isset( $_GET['update'] ) ) {  // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			if ( isset( $_POST['import_settings'] ) ) {
+				$active_tab = 'tab4';
+				$result = $this->import_admin_options();
+
+				if ( is_wp_error( $result ) ) {
+					$msg = '<div id="message" class="wptoc-admin-alert is-error"><p>' . esc_html( $result->get_error_message() ) . '</p></div>';
+				} else {
+					$export_settings_payload = $this->get_export_settings_payload();
+					$msg = '<div id="message" class="wptoc-admin-alert is-success"><p>' . __( 'Settings imported.', 'table-of-contents-plus' ) . '</p></div>';
+				}
+			} elseif ( isset( $_GET['update'] ) ) {  // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 				if ( $this->save_admin_options() ) {
 					$msg = '<div id="message" class="wptoc-admin-alert is-success"><p>' . __( 'Options saved.', 'table-of-contents-plus' ) . '</p></div>';
 				} else {
@@ -846,17 +1071,20 @@ jQuery(function($) {
 			<?php echo wp_kses_post( $msg ); ?>
 <form class="wptoc-admin-form" method="post" action="<?php echo esc_url( '?page=' . $page . '&update' ); ?>">
 			<?php wp_nonce_field( plugin_basename( __FILE__ ), 'toc-admin-options' ); ?>
+			<input type="hidden" name="wptoc_active_tab" id="wptoc_active_tab" value="<?php echo esc_attr( $active_tab ); ?>" />
 	<div class="wptoc-admin-save-overlay" aria-hidden="true">
 		<div class="wptoc-admin-save-overlay__dialog" role="status" aria-live="polite">
 			<span class="wptoc-admin-save-spinner"></span>
-			<span class="wptoc-admin-save-overlay__title"><?php esc_html_e( 'Saving changes', 'table-of-contents-plus' ); ?></span>
-			<span class="wptoc-admin-save-overlay__text"><?php esc_html_e( 'Please wait while WPTOC+ updates your settings.', 'table-of-contents-plus' ); ?></span>
+			<span class="wptoc-admin-save-overlay__title" data-default-title="<?php esc_attr_e( 'Saving changes', 'table-of-contents-plus' ); ?>"><?php esc_html_e( 'Saving changes', 'table-of-contents-plus' ); ?></span>
+			<span class="wptoc-admin-save-overlay__text" data-default-text="<?php esc_attr_e( 'Please wait while WPTOC+ updates your settings.', 'table-of-contents-plus' ); ?>"><?php esc_html_e( 'Please wait while WPTOC+ updates your settings.', 'table-of-contents-plus' ); ?></span>
 		</div>
 	</div>
 
 <ul id="tabbed-nav">
 	<li><a href="#tab1"><?php esc_html_e( 'Options', 'table-of-contents-plus' ); ?></a></li>
 	<li><a href="#tab2"><?php esc_html_e( 'Advanced Options', 'table-of-contents-plus' ); ?></a></li>
+	<li><a href="#tab3"><?php esc_html_e( 'Appearance', 'table-of-contents-plus' ); ?></a></li>
+	<li><a href="#tab4"><?php esc_html_e( 'Import / Export', 'table-of-contents-plus' ); ?></a></li>
 
 	<?php
 	// XTEC ************ AFEGIT - Change default settings
@@ -982,11 +1210,12 @@ jQuery(function($) {
 	<td>
 		<select name="display_mode" id="display_mode">
 			<option value="inline"<?php if ( 'inline' === $this->options['display_mode'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'Standard inline', 'table-of-contents-plus' ); ?></option>
-			<option value="sticky"<?php if ( 'sticky' === $this->options['display_mode'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'Sticky sidebar (desktop)', 'table-of-contents-plus' ); ?></option>
 			<option value="floating"<?php if ( 'floating' === $this->options['display_mode'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'Floating panel (desktop)', 'table-of-contents-plus' ); ?></option>
+			<option value="sticky"<?php if ( 'sticky' === $this->options['display_mode'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'Sticky full width (desktop)', 'table-of-contents-plus' ); ?></option>
+			<option value="sticky-column"<?php if ( 'sticky-column' === $this->options['display_mode'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'Sticky side column (desktop)', 'table-of-contents-plus' ); ?></option>
 		</select>
 		<br>
-		<span class="description"><label for="display_mode"><?php esc_html_e( 'Sticky and floating modes automatically fall back to the standard inline TOC on smaller screens.', 'table-of-contents-plus' ); ?></label></span>
+		<span class="description"><label for="display_mode"><?php esc_html_e( 'Floating and sticky desktop modes automatically fall back to the standard inline TOC on smaller screens. Sticky side column mode keeps the TOC width but reserves that side column for the rest of the article.', 'table-of-contents-plus' ); ?></label></span>
 	</td>
 </tr>
 <tr>
@@ -1008,19 +1237,31 @@ jQuery(function($) {
 			<option value="left"<?php if ( 'left' === $this->options['floating_side'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'Left side', 'table-of-contents-plus' ); ?></option>
 		</select>
 		<br>
-		<span class="description"><label for="floating_side"><?php esc_html_e( 'Only applies when display mode is set to Floating panel.', 'table-of-contents-plus' ); ?></label></span>
+			<span class="description"><label for="floating_side"><?php esc_html_e( 'Applies to Floating panel and Sticky side column display modes.', 'table-of-contents-plus' ); ?></label></span>
 	</td>
 </tr>
 <tr>
 	<th><label for="display_top_offset"><?php esc_html_e( 'Display top offset', 'table-of-contents-plus' ); ?></label></th>
 	<td>
 		<input type="text" class="regular-text" value="<?php echo intval( $this->options['display_top_offset'] ); ?>" id="display_top_offset" name="display_top_offset"> px<br>
-		<span class="description"><label for="display_top_offset"><?php esc_html_e( 'Adds top spacing for sticky sidebar and floating panel modes so the TOC clears your theme\'s sticky header.', 'table-of-contents-plus' ); ?></label></span>
+		<span class="description"><label for="display_top_offset"><?php esc_html_e( 'Adds top spacing for floating and sticky desktop modes so the TOC clears your theme\'s sticky header.', 'table-of-contents-plus' ); ?></label></span>
 	</td>
 </tr>
 <tr>
 	<th><label for="show_heirarchy"><?php esc_html_e( 'Show hierarchy', 'table-of-contents-plus' ); ?></label></th>
 	<td><input type="checkbox" value="1" id="show_heirarchy" name="show_heirarchy"<?php if ( $this->options['show_heirarchy'] ) echo ' checked="checked"'; ?> /></td>
+</tr>
+<tr>
+	<th><label for="collapsible_subsections"><?php esc_html_e( 'Collapsible nested sections', 'table-of-contents-plus' ); ?></label></th>
+	<td>
+		<input type="checkbox" value="1" id="collapsible_subsections" name="collapsible_subsections"<?php if ( $this->options['collapsible_subsections'] ) echo ' checked="checked"'; ?> />
+		<label for="collapsible_subsections"> <?php esc_html_e( 'Allow nested TOC branches to collapse and expand', 'table-of-contents-plus' ); ?></label><br>
+		<label for="collapse_subsections_by_default">
+			<input type="checkbox" value="1" id="collapse_subsections_by_default" name="collapse_subsections_by_default"<?php if ( $this->options['collapse_subsections_by_default'] ) echo ' checked="checked"'; ?> />
+			<?php esc_html_e( 'Collapse subsections by default', 'table-of-contents-plus' ); ?>
+		</label><br>
+		<span class="description"><label for="collapsible_subsections"><?php esc_html_e( 'Only applies when hierarchy is enabled. Active parent sections open automatically, and you can choose whether other branches start collapsed or expanded.', 'table-of-contents-plus' ); ?></label></span>
+	</td>
 </tr>
 <tr>
 	<th><label for="ordered_list"><?php esc_html_e( 'Number list items', 'table-of-contents-plus' ); ?></label></th>
@@ -1030,213 +1271,6 @@ jQuery(function($) {
 	<th><label for="smooth_scroll"><?php esc_html_e( 'Enable smooth scroll effect', 'table-of-contents-plus' ); ?></label></th>
 	<td><input type="checkbox" value="1" id="smooth_scroll" name="smooth_scroll"<?php if ( $this->options['smooth_scroll'] ) echo ' checked="checked"'; ?> /><label for="smooth_scroll"> <?php esc_html_e( 'Scroll rather than jump to the anchor link', 'table-of-contents-plus' ); ?></label></td>
 </tr>
-</tbody>
-</table>
-
-<h3><?php esc_html_e( 'Appearance', 'table-of-contents-plus' ); ?></h3>
-<table class="form-table">
-<tbody>
-<tr>
-	<th><label for="width"><?php esc_html_e( 'Width', 'table-of-contents-plus' ); ?></label></td>
-	<td>
-		<select name="width" id="width">
-			<optgroup label="<?php esc_html_e( 'Fixed width', 'table-of-contents-plus' ); ?>">
-				<option value="200px"<?php if ( '200px' === $this->options['width'] ) echo ' selected="selected"'; ?>>200px</option>
-				<option value="225px"<?php if ( '225px' === $this->options['width'] ) echo ' selected="selected"'; ?>>225px</option>
-				<option value="250px"<?php if ( '250px' === $this->options['width'] ) echo ' selected="selected"'; ?>>250px</option>
-				<option value="275px"<?php if ( '275px' === $this->options['width'] ) echo ' selected="selected"'; ?>>275px</option>
-				<option value="300px"<?php if ( '300px' === $this->options['width'] ) echo ' selected="selected"'; ?>>300px</option>
-				<option value="325px"<?php if ( '325px' === $this->options['width'] ) echo ' selected="selected"'; ?>>325px</option>
-				<option value="350px"<?php if ( '350px' === $this->options['width'] ) echo ' selected="selected"'; ?>>350px</option>
-				<option value="375px"<?php if ( '375px' === $this->options['width'] ) echo ' selected="selected"'; ?>>375px</option>
-				<option value="400px"<?php if ( '400px' === $this->options['width'] ) echo ' selected="selected"'; ?>>400px</option>
-			</optgroup>
-			<optgroup label="<?php esc_html_e( 'Relative', 'table-of-contents-plus' ); ?>">
-				<option value="Auto"<?php if ( 'Auto' === $this->options['width'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'Auto (default)', 'table-of-contents-plus' ); ?></option>
-				<option value="25%"<?php if ( '25%' === $this->options['width'] ) echo ' selected="selected"'; ?>>25%</option>
-				<option value="33%"<?php if ( '33%' === $this->options['width'] ) echo ' selected="selected"'; ?>>33%</option>
-				<option value="50%"<?php if ( '50%' === $this->options['width'] ) echo ' selected="selected"'; ?>>50%</option>
-				<option value="66%"<?php if ( '66%' === $this->options['width'] ) echo ' selected="selected"'; ?>>66%</option>
-				<option value="75%"<?php if ( '75%' === $this->options['width'] ) echo ' selected="selected"'; ?>>75%</option>
-				<option value="100%"<?php if ( '100%' === $this->options['width'] ) echo ' selected="selected"'; ?>>100%</option>
-			</optgroup>
-			<optgroup label="<?php
-			/* translators: other width */
-			esc_html_e( 'Other', 'table-of-contents-plus' ); ?>">
-				<option value="User defined"<?php if ( 'User defined' === $this->options['width'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'User defined', 'table-of-contents-plus' ); ?></option>
-			</optgroup>
-		</select>
-		<div class="more_toc_options<?php if ( 'User defined' !== $this->options['width'] ) echo ' disabled'; ?>">
-			<label for="width_custom"><?php
-			/* translators: ignore %s as it's some HTML label tags */
-			echo wp_kses_post( sprintf( __( 'Please enter a number and %s select its units, eg: 100px, 10em', 'table-of-contents-plus' ), '</label><label for="width_custom_units">' ) ); ?></label><br>
-			<input type="text" class="regular-text" value="<?php echo floatval( $this->options['width_custom'] ); ?>" id="width_custom" name="width_custom" />
-			<select name="width_custom_units" id="width_custom_units">
-				<option value="px"<?php if ( 'px' === $this->options['width_custom_units'] ) echo ' selected="selected"'; ?>>px</option>
-				<option value="%"<?php if ( '%' === $this->options['width_custom_units'] ) echo ' selected="selected"'; ?>>%</option>
-				<option value="em"<?php if ( 'em' === $this->options['width_custom_units'] ) echo ' selected="selected"'; ?>>em</option>
-			</select>
-		</div>
-	</td>
-</tr>
-<tr>
-	<th><label for="wrapping"><?php esc_html_e( 'Wrapping', 'table-of-contents-plus' ); ?></label></td>
-	<td>
-		<select name="wrapping" id="wrapping">
-			<option value="<?php echo esc_attr( TOC_WRAPPING_NONE ); ?>"<?php if ( TOC_WRAPPING_NONE === $this->options['wrapping'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'None (default)', 'table-of-contents-plus' ); ?></option>
-			<option value="<?php echo esc_attr( TOC_WRAPPING_LEFT ); ?>"<?php if ( TOC_WRAPPING_LEFT === $this->options['wrapping'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'Left', 'table-of-contents-plus' ); ?></option>
-			<option value="<?php echo esc_attr( TOC_WRAPPING_RIGHT ); ?>"<?php if ( TOC_WRAPPING_RIGHT === $this->options['wrapping'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'Right', 'table-of-contents-plus' ); ?></option>
-		</select>
-	</td>
-</tr>
-<tr>
-	<th><label for="font_size"><?php esc_html_e( 'Font size', 'table-of-contents-plus' ); ?></label></th>
-	<td>
-		<input type="text" class="regular-text" value="<?php echo floatval( $this->options['font_size'] ); ?>" id="font_size" name="font_size" />
-		<select name="font_size_units" id="font_size_units">
-			<option value="px"<?php if ( 'pt' === $this->options['font_size_units'] ) echo ' selected="selected"'; ?>>pt</option>
-			<option value="%"<?php if ( '%' === $this->options['font_size_units'] ) echo ' selected="selected"'; ?>>%</option>
-			<option value="em"<?php if ( 'em' === $this->options['font_size_units'] ) echo ' selected="selected"'; ?>>em</option>
-		</select>
-	</td>
-</tr>
-
-<?php
-// XTEC ************ AFEGIT - Restrict access to all users but xtecadmin
-// 2017.05.11 @xaviernietosanchez
-
-if ( is_xtec_super_admin() ) {
-
-// ************ FI
-?>
-
-<tr>
-	<th><?php
-	/* translators: appearance / colour / look and feel options */
-	esc_html_e( 'Presentation', 'table-of-contents-plus' ); ?>
-	</th>
-	<td><?php
-
-	$theme_options = [
-		[
-			'id'   => TOC_THEME_GREY,
-			'name' => __( 'Grey (default)', 'table-of-contents-plus' ),
-			'url'  => TOC_PLUGIN_PATH . '/images/grey.png',
-		],
-		[
-			'id'   => TOC_THEME_LIGHT_BLUE,
-			'name' => __( 'Light blue', 'table-of-contents-plus' ),
-			'url'  => TOC_PLUGIN_PATH . '/images/blue.png',
-		],
-		[
-			'id'   => TOC_THEME_WHITE,
-			'name' => __( 'White', 'table-of-contents-plus' ),
-			'url'  => TOC_PLUGIN_PATH . '/images/white.png',
-		],
-		[
-			'id'   => TOC_THEME_BLACK,
-			'name' => __( 'Black', 'table-of-contents-plus' ),
-			'url'  => TOC_PLUGIN_PATH . '/images/black.png',
-		],
-		[
-			'id'   => TOC_THEME_TRANSPARENT,
-			'name' => __( 'Transparent', 'table-of-contents-plus' ),
-			'url'  => TOC_PLUGIN_PATH . '/images/transparent.png',
-		],
-		[
-			'id'   => TOC_THEME_CUSTOM,
-			'name' => __( 'Custom', 'table-of-contents-plus' ),
-			'url'  => TOC_PLUGIN_PATH . '/images/custom.png',
-		],
-	];
-
-	foreach ( $theme_options as $theme_option ) {
-		printf(
-			'<div class="toc_theme_option">' .
-				'<input type="radio" name="theme" id="theme_%1$s" value="%1$s"%2$s>' .
-				'<label for="theme_%1$s"> %3$s<br><img src="%4$s"" alt="" /></label>' .
-			'</div>',
-			esc_attr( $theme_option['id'] ),
-			( $theme_option['id'] === $this->options['theme'] ) ? ' checked="checked"' : '',
-			esc_html( $theme_option['name'] ),
-			esc_url( $theme_option['url'] )
-		);
-	}
-	?>
-		<div class="clear"></div>
-
-		<div class="more_toc_options<?php if ( TOC_THEME_CUSTOM !== $this->options['theme'] ) echo ' disabled'; ?>">
-			<table id="theme_custom" class="more_toc_options_table">
-				<tbody>
-
-			<?php
-			$custom_theme_props = [
-				[
-					'id'    => 'custom_background_colour',
-					'name'  => __( 'Background', 'table-of-contents-plus' ),
-					'value' => $this->options['custom_background_colour'],
-				],
-				[
-					'id'    => 'custom_border_colour',
-					'name'  => __( 'Border', 'table-of-contents-plus' ),
-					'value' => $this->options['custom_border_colour'],
-				],
-				[
-					'id'    => 'custom_title_colour',
-					'name'  => __( 'Title', 'table-of-contents-plus' ),
-					'value' => $this->options['custom_title_colour'],
-				],
-				[
-					'id'    => 'custom_links_colour',
-					'name'  => __( 'Links', 'table-of-contents-plus' ),
-					'value' => $this->options['custom_links_colour'],
-				],
-				[
-					'id'    => 'custom_links_hover_colour',
-					'name'  => __( 'Links (hover)', 'table-of-contents-plus' ),
-					'value' => $this->options['custom_links_hover_colour'],
-				],
-				[
-					'id'    => 'custom_links_visited_colour',
-					'name'  => __( 'Links (visited)', 'table-of-contents-plus' ),
-					'value' => $this->options['custom_links_visited_colour'],
-				],
-			];
-
-			foreach ( $custom_theme_props as $custom_theme_prop ) {
-				printf(
-					'<tr>' .
-						'<th><label for="%1$s">%2$s</label></th>' .
-						'<td><input type="text" class="custom_colour_option" value="%3$s" id="%1$s" name="%1$s"> <img src="%4$s/images/colour-wheel.png" alt=""></td>' .
-					'</tr>',
-					esc_attr( $custom_theme_prop['id'] ),
-					esc_html( $custom_theme_prop['name'] ),
-					esc_attr( $custom_theme_prop['value'] ),
-					esc_url( TOC_PLUGIN_PATH )
-				);
-			}
-
-			?>
-			</tbody>
-			</table>
-			<div id="farbtastic_colour_wheel"></div>
-			<div class="clear"></div>
-			<p><?php
-			/* translators: %s translates to <code>#</code> */
-			echo wp_kses_post( sprintf( __( "Leaving the value as %s will inherit your theme's styles", 'table-of-contents-plus' ), '<code>#</code>' ) ); ?></p>
-		</div>
-	</td>
-</tr>
-
-<?php
-// XTEC ************ AFEGIT - Restrict access to all users but xtecadmin
-// 2017.05.04 @xaviernietosanchez
-
-}
-
-// ************ FI
-?>
-
 </tbody>
 </table>
 
@@ -1354,6 +1388,248 @@ if ( is_xtec_super_admin() ) {
 	echo wp_kses_post( sprintf( __( 'If you would like to fully customise the position of the table of contents, you can use the %s shortcode by placing it at the desired position of your post, page or custom post type. This method allows you to generate the table of contents despite having auto insertion disabled for its content type. Please visit the help tab for further information about this shortcode.', 'table-of-contents-plus' ), '<code>[toc]</code>' ) ); ?></p>
 	</div>
 
+	<div id="tab3" class="tab_content">
+	<h3><?php esc_html_e( 'Appearance', 'table-of-contents-plus' ); ?></h3>
+	<table class="form-table">
+	<tbody>
+	<tr>
+		<th><label for="width"><?php esc_html_e( 'Width', 'table-of-contents-plus' ); ?></label></td>
+		<td>
+			<select name="width" id="width">
+				<optgroup label="<?php esc_html_e( 'Fixed width', 'table-of-contents-plus' ); ?>">
+					<option value="200px"<?php if ( '200px' === $this->options['width'] ) echo ' selected="selected"'; ?>>200px</option>
+					<option value="225px"<?php if ( '225px' === $this->options['width'] ) echo ' selected="selected"'; ?>>225px</option>
+					<option value="250px"<?php if ( '250px' === $this->options['width'] ) echo ' selected="selected"'; ?>>250px</option>
+					<option value="275px"<?php if ( '275px' === $this->options['width'] ) echo ' selected="selected"'; ?>>275px</option>
+					<option value="300px"<?php if ( '300px' === $this->options['width'] ) echo ' selected="selected"'; ?>>300px</option>
+					<option value="325px"<?php if ( '325px' === $this->options['width'] ) echo ' selected="selected"'; ?>>325px</option>
+					<option value="350px"<?php if ( '350px' === $this->options['width'] ) echo ' selected="selected"'; ?>>350px</option>
+					<option value="375px"<?php if ( '375px' === $this->options['width'] ) echo ' selected="selected"'; ?>>375px</option>
+					<option value="400px"<?php if ( '400px' === $this->options['width'] ) echo ' selected="selected"'; ?>>400px</option>
+				</optgroup>
+				<optgroup label="<?php esc_html_e( 'Relative', 'table-of-contents-plus' ); ?>">
+					<option value="Auto"<?php if ( 'Auto' === $this->options['width'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'Auto (default)', 'table-of-contents-plus' ); ?></option>
+					<option value="25%"<?php if ( '25%' === $this->options['width'] ) echo ' selected="selected"'; ?>>25%</option>
+					<option value="33%"<?php if ( '33%' === $this->options['width'] ) echo ' selected="selected"'; ?>>33%</option>
+					<option value="50%"<?php if ( '50%' === $this->options['width'] ) echo ' selected="selected"'; ?>>50%</option>
+					<option value="66%"<?php if ( '66%' === $this->options['width'] ) echo ' selected="selected"'; ?>>66%</option>
+					<option value="75%"<?php if ( '75%' === $this->options['width'] ) echo ' selected="selected"'; ?>>75%</option>
+					<option value="100%"<?php if ( '100%' === $this->options['width'] ) echo ' selected="selected"'; ?>>100%</option>
+				</optgroup>
+				<optgroup label="<?php
+				/* translators: other width */
+				esc_html_e( 'Other', 'table-of-contents-plus' ); ?>">
+					<option value="User defined"<?php if ( 'User defined' === $this->options['width'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'User defined', 'table-of-contents-plus' ); ?></option>
+				</optgroup>
+			</select>
+			<div class="more_toc_options<?php if ( 'User defined' !== $this->options['width'] ) echo ' disabled'; ?>">
+				<label for="width_custom"><?php
+				/* translators: ignore %s as it's some HTML label tags */
+				echo wp_kses_post( sprintf( __( 'Please enter a number and %s select its units, eg: 100px, 10em', 'table-of-contents-plus' ), '</label><label for="width_custom_units">' ) ); ?></label><br>
+				<input type="text" class="regular-text" value="<?php echo floatval( $this->options['width_custom'] ); ?>" id="width_custom" name="width_custom" />
+				<select name="width_custom_units" id="width_custom_units">
+					<option value="px"<?php if ( 'px' === $this->options['width_custom_units'] ) echo ' selected="selected"'; ?>>px</option>
+					<option value="%"<?php if ( '%' === $this->options['width_custom_units'] ) echo ' selected="selected"'; ?>>%</option>
+					<option value="em"<?php if ( 'em' === $this->options['width_custom_units'] ) echo ' selected="selected"'; ?>>em</option>
+				</select>
+			</div>
+		</td>
+	</tr>
+	<tr>
+		<th><label for="wrapping"><?php esc_html_e( 'Wrapping', 'table-of-contents-plus' ); ?></label></td>
+		<td>
+			<select name="wrapping" id="wrapping">
+				<option value="<?php echo esc_attr( TOC_WRAPPING_NONE ); ?>"<?php if ( TOC_WRAPPING_NONE === $this->options['wrapping'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'None (default)', 'table-of-contents-plus' ); ?></option>
+				<option value="<?php echo esc_attr( TOC_WRAPPING_LEFT ); ?>"<?php if ( TOC_WRAPPING_LEFT === $this->options['wrapping'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'Left', 'table-of-contents-plus' ); ?></option>
+				<option value="<?php echo esc_attr( TOC_WRAPPING_RIGHT ); ?>"<?php if ( TOC_WRAPPING_RIGHT === $this->options['wrapping'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'Right', 'table-of-contents-plus' ); ?></option>
+			</select>
+		</td>
+	</tr>
+	<tr>
+		<th><label for="font_size"><?php esc_html_e( 'Font size', 'table-of-contents-plus' ); ?></label></th>
+		<td>
+			<input type="text" class="regular-text" value="<?php echo floatval( $this->options['font_size'] ); ?>" id="font_size" name="font_size" />
+			<select name="font_size_units" id="font_size_units">
+				<option value="px"<?php if ( 'pt' === $this->options['font_size_units'] ) echo ' selected="selected"'; ?>>pt</option>
+				<option value="%"<?php if ( '%' === $this->options['font_size_units'] ) echo ' selected="selected"'; ?>>%</option>
+				<option value="em"<?php if ( 'em' === $this->options['font_size_units'] ) echo ' selected="selected"'; ?>>em</option>
+			</select>
+		</td>
+	</tr>
+	<tr>
+		<th><label for="design_preset"><?php esc_html_e( 'Design preset', 'table-of-contents-plus' ); ?></label></th>
+		<td>
+			<select name="design_preset" id="design_preset">
+				<option value="default"<?php if ( 'default' === $this->options['design_preset'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'Default', 'table-of-contents-plus' ); ?></option>
+				<option value="minimal"<?php if ( 'minimal' === $this->options['design_preset'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'Minimal', 'table-of-contents-plus' ); ?></option>
+				<option value="editorial"<?php if ( 'editorial' === $this->options['design_preset'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'Editorial', 'table-of-contents-plus' ); ?></option>
+				<option value="docs"<?php if ( 'docs' === $this->options['design_preset'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'Docs', 'table-of-contents-plus' ); ?></option>
+				<option value="card"<?php if ( 'card' === $this->options['design_preset'] ) echo ' selected="selected"'; ?>><?php esc_html_e( 'Card', 'table-of-contents-plus' ); ?></option>
+			</select><br>
+			<span class="description"><label for="design_preset"><?php esc_html_e( 'Applies structural styling such as spacing, borders, and title treatment. Presentation colours still apply on top.', 'table-of-contents-plus' ); ?></label></span>
+		</td>
+	</tr>
+
+	<?php
+	// XTEC ************ AFEGIT - Restrict access to all users but xtecadmin
+	// 2017.05.11 @xaviernietosanchez
+
+	if ( is_xtec_super_admin() ) {
+
+	// ************ FI
+	?>
+
+	<tr>
+		<th><?php
+		/* translators: appearance / colour / look and feel options */
+		esc_html_e( 'Presentation', 'table-of-contents-plus' ); ?>
+		</th>
+		<td><?php
+
+		$theme_options = [
+			[
+				'id'   => TOC_THEME_GREY,
+				'name' => __( 'Grey (default)', 'table-of-contents-plus' ),
+				'url'  => TOC_PLUGIN_PATH . '/images/grey.png',
+			],
+			[
+				'id'   => TOC_THEME_LIGHT_BLUE,
+				'name' => __( 'Light blue', 'table-of-contents-plus' ),
+				'url'  => TOC_PLUGIN_PATH . '/images/blue.png',
+			],
+			[
+				'id'   => TOC_THEME_WHITE,
+				'name' => __( 'White', 'table-of-contents-plus' ),
+				'url'  => TOC_PLUGIN_PATH . '/images/white.png',
+			],
+			[
+				'id'   => TOC_THEME_BLACK,
+				'name' => __( 'Black', 'table-of-contents-plus' ),
+				'url'  => TOC_PLUGIN_PATH . '/images/black.png',
+			],
+			[
+				'id'   => TOC_THEME_TRANSPARENT,
+				'name' => __( 'Transparent', 'table-of-contents-plus' ),
+				'url'  => TOC_PLUGIN_PATH . '/images/transparent.png',
+			],
+			[
+				'id'   => TOC_THEME_CUSTOM,
+				'name' => __( 'Custom', 'table-of-contents-plus' ),
+				'url'  => TOC_PLUGIN_PATH . '/images/custom.png',
+			],
+		];
+
+		foreach ( $theme_options as $theme_option ) {
+			printf(
+				'<div class="toc_theme_option">' .
+					'<input type="radio" name="theme" id="theme_%1$s" value="%1$s"%2$s>' .
+					'<label for="theme_%1$s"> %3$s<br><img src="%4$s"" alt="" /></label>' .
+				'</div>',
+				esc_attr( $theme_option['id'] ),
+				( $theme_option['id'] === $this->options['theme'] ) ? ' checked="checked"' : '',
+				esc_html( $theme_option['name'] ),
+				esc_url( $theme_option['url'] )
+			);
+		}
+		?>
+			<div class="clear"></div>
+
+			<div class="more_toc_options<?php if ( TOC_THEME_CUSTOM !== $this->options['theme'] ) echo ' disabled'; ?>">
+				<table id="theme_custom" class="more_toc_options_table">
+					<tbody>
+
+				<?php
+				$custom_theme_props = [
+					[
+						'id'    => 'custom_background_colour',
+						'name'  => __( 'Background', 'table-of-contents-plus' ),
+						'value' => $this->options['custom_background_colour'],
+					],
+					[
+						'id'    => 'custom_border_colour',
+						'name'  => __( 'Border', 'table-of-contents-plus' ),
+						'value' => $this->options['custom_border_colour'],
+					],
+					[
+						'id'    => 'custom_title_colour',
+						'name'  => __( 'Title', 'table-of-contents-plus' ),
+						'value' => $this->options['custom_title_colour'],
+					],
+					[
+						'id'    => 'custom_links_colour',
+						'name'  => __( 'Links', 'table-of-contents-plus' ),
+						'value' => $this->options['custom_links_colour'],
+					],
+					[
+						'id'    => 'custom_links_hover_colour',
+						'name'  => __( 'Links (hover)', 'table-of-contents-plus' ),
+						'value' => $this->options['custom_links_hover_colour'],
+					],
+					[
+						'id'    => 'custom_links_visited_colour',
+						'name'  => __( 'Links (visited)', 'table-of-contents-plus' ),
+						'value' => $this->options['custom_links_visited_colour'],
+					],
+				];
+
+				foreach ( $custom_theme_props as $custom_theme_prop ) {
+					printf(
+						'<tr>' .
+							'<th><label for="%1$s">%2$s</label></th>' .
+							'<td><input type="text" class="custom_colour_option" value="%3$s" id="%1$s" name="%1$s"> <img src="%4$s/images/colour-wheel.png" alt=""></td>' .
+						'</tr>',
+						esc_attr( $custom_theme_prop['id'] ),
+						esc_html( $custom_theme_prop['name'] ),
+						esc_attr( $custom_theme_prop['value'] ),
+						esc_url( TOC_PLUGIN_PATH )
+					);
+				}
+
+				?>
+				</tbody>
+				</table>
+				<div id="farbtastic_colour_wheel"></div>
+				<div class="clear"></div>
+				<p><?php
+				/* translators: %s translates to <code>#</code> */
+				echo wp_kses_post( sprintf( __( "Leaving the value as %s will inherit your theme's styles", 'table-of-contents-plus' ), '<code>#</code>' ) ); ?></p>
+			</div>
+		</td>
+	</tr>
+
+	<?php
+	// XTEC ************ AFEGIT - Restrict access to all users but xtecadmin
+	// 2017.05.04 @xaviernietosanchez
+
+	}
+
+	// ************ FI
+	?>
+
+	</tbody>
+	</table>
+	</div>
+
+	<div id="tab4" class="tab_content">
+	<h4><?php esc_html_e( 'Export Settings', 'table-of-contents-plus' ); ?></h4>
+	<p><?php esc_html_e( 'Copy this JSON bundle to back up your WPTOC+ settings or move them to another site running this fork.', 'table-of-contents-plus' ); ?></p>
+	<textarea class="large-text code wptoc-admin-export-field" rows="16" readonly="readonly"><?php echo esc_textarea( $export_settings_payload ); ?></textarea>
+
+	<h4><?php esc_html_e( 'Import Settings', 'table-of-contents-plus' ); ?></h4>
+	<p><?php esc_html_e( 'Paste a previously exported WPTOC+ JSON bundle below. Importing replaces the current plugin settings on this site.', 'table-of-contents-plus' ); ?></p>
+	<textarea class="large-text code wptoc-admin-import-field" rows="16" name="settings_import_blob" placeholder="<?php esc_attr_e( 'Paste exported WPTOC+ settings JSON here', 'table-of-contents-plus' ); ?>"><?php echo isset( $_POST['settings_import_blob'] ) ? esc_textarea( wp_unslash( $_POST['settings_import_blob'] ) ) : ''; ?></textarea>
+	<p class="submit wptoc-admin-import-submit">
+		<input
+			type="submit"
+			name="import_settings"
+			class="button button-secondary"
+			value="<?php esc_attr_e( 'Import Settings', 'table-of-contents-plus' ); ?>"
+			data-busy-title="<?php esc_attr_e( 'Importing settings', 'table-of-contents-plus' ); ?>"
+			data-busy-text="<?php esc_attr_e( 'Please wait while WPTOC+ validates and imports your settings.', 'table-of-contents-plus' ); ?>"
+		/>
+	</p>
+	</div>
+
 
 	</div>
 </div>
@@ -1382,13 +1658,7 @@ if ( is_xtec_super_admin() ) {
 						$css .= 'background: ' . $this->options['custom_background_colour'] . ';border: 1px solid ' . $this->options['custom_border_colour'] . ';';
 					}
 					if ( 'Auto' !== $this->options['width'] ) {
-						$css .= 'width: ';
-						if ( 'User defined' !== $this->options['width'] ) {
-							$css .= $this->options['width'];
-						} else {
-							$css .= $this->options['width_custom'] . $this->options['width_custom_units'];
-						}
-						$css .= ';';
+						$css .= '--wptoc-container-width: ' . $this->get_toc_width_value() . ';';
 					}
 					$css .= '}';
 				}
@@ -1417,6 +1687,45 @@ if ( is_xtec_super_admin() ) {
 			}
 
 			return $css;
+		}
+
+
+		private function build_toc_html( $items, $css_classes, $toc_title_template ) {
+			$html = '<div id="toc_container" class="' . htmlentities( $css_classes, ENT_COMPAT, 'UTF-8' ) . '">';
+
+			if ( $this->options['show_heading_text'] ) {
+				$toc_title = htmlentities( $toc_title_template, ENT_COMPAT, 'UTF-8' );
+				if ( false !== strpos( $toc_title, '%PAGE_TITLE%' ) ) {
+					$toc_title = str_replace( '%PAGE_TITLE%', get_the_title(), $toc_title );
+				}
+				if ( false !== strpos( $toc_title, '%PAGE_NAME%' ) ) {
+					$toc_title = str_replace( '%PAGE_NAME%', get_the_title(), $toc_title );
+				}
+				$html .= '<p class="toc_title">' . $toc_title . '</p>';
+			}
+
+			$html .= '<ul class="toc_list">' . $items . '</ul></div>' . "\n";
+
+			return $html;
+		}
+
+
+		private function build_sticky_column_layout( $toc_html, $body_html ) {
+			$layout_class = 'left' === $this->options['floating_side'] ? 'toc_sticky_column_left' : 'toc_sticky_column_right';
+			$layout_style = '';
+
+			if ( 'Auto' !== $this->options['width'] ) {
+				$layout_style = ' style="--wptoc-column-width:' . esc_attr( $this->get_toc_width_value() ) . ';"';
+			}
+
+			$toc_column  = '<div class="toc_sticky_column_rail">' . $toc_html . '</div>';
+			$main_column = '<div class="toc_sticky_column_main">' . $body_html . '</div>';
+
+			if ( 'toc_sticky_column_left' === $layout_class ) {
+				return '<div class="toc_sticky_column_layout ' . $layout_class . '"' . $layout_style . '>' . $toc_column . $main_column . '</div>';
+			}
+
+			return '<div class="toc_sticky_column_layout ' . $layout_class . '"' . $layout_style . '>' . $main_column . $toc_column . '</div>';
 		}
 
 
@@ -1914,18 +2223,20 @@ if ( is_xtec_super_admin() ) {
 					} else {
 
 						// wrapping css classes
-						switch ( $this->options['wrapping'] ) {
-							case TOC_WRAPPING_LEFT:
-								$css_classes .= ' toc_wrap_left';
-								break;
+						if ( 'sticky-column' !== $this->options['display_mode'] ) {
+							switch ( $this->options['wrapping'] ) {
+								case TOC_WRAPPING_LEFT:
+									$css_classes .= ' toc_wrap_left';
+									break;
 
-							case TOC_WRAPPING_RIGHT:
-								$css_classes .= ' toc_wrap_right';
-								break;
+								case TOC_WRAPPING_RIGHT:
+									$css_classes .= ' toc_wrap_right';
+									break;
 
-							case TOC_WRAPPING_NONE:
-							default:
-								// do nothing
+								case TOC_WRAPPING_NONE:
+								default:
+									// do nothing
+							}
 						}
 
 						// colour themes
@@ -1952,12 +2263,16 @@ if ( is_xtec_super_admin() ) {
 						}
 
 						switch ( $this->options['display_mode'] ) {
+							case 'floating':
+								$css_classes .= ' toc_display_floating toc_floating_' . $this->options['floating_side'];
+								break;
+
 							case 'sticky':
 								$css_classes .= ' toc_display_sticky';
 								break;
 
-							case 'floating':
-								$css_classes .= ' toc_display_floating toc_floating_' . $this->options['floating_side'];
+							case 'sticky-column':
+								$css_classes .= ' toc_display_sticky_column';
 								break;
 
 							case 'inline':
@@ -1965,8 +2280,18 @@ if ( is_xtec_super_admin() ) {
 								// do nothing
 						}
 
+						$css_classes .= ' toc_preset_' . sanitize_html_class( $this->options['design_preset'] );
+
 							if ( 'compact' === $this->options['mobile_mode'] ) {
 								$css_classes .= ' toc_mobile_compact';
+							}
+
+							if ( $this->options['show_heirarchy'] && $this->options['collapsible_subsections'] ) {
+								$css_classes .= ' toc_collapsible_subsections';
+
+								if ( ! $this->options['collapse_subsections_by_default'] ) {
+									$css_classes .= ' toc_collapsible_default_open';
+								}
 							}
 
 						if ( $this->options['css_container_class'] ) {
@@ -1980,21 +2305,60 @@ if ( is_xtec_super_admin() ) {
 							$css_classes = ' ';
 						}
 
-						// add container, toc title and list items
-						$html = '<div id="toc_container" class="' . htmlentities( $css_classes, ENT_COMPAT, 'UTF-8' ) . '">';
-						if ( $this->options['show_heading_text'] ) {
-							$toc_title = htmlentities( $toc_title_template, ENT_COMPAT, 'UTF-8' );
-							if ( false !== strpos( $toc_title, '%PAGE_TITLE%' ) ) {
-								$toc_title = str_replace( '%PAGE_TITLE%', get_the_title(), $toc_title );
-							}
-							if ( false !== strpos( $toc_title, '%PAGE_NAME%' ) ) {
-								$toc_title = str_replace( '%PAGE_NAME%', get_the_title(), $toc_title );
-							}
-							$html .= '<p class="toc_title">' . $toc_title . '</p>';
-						}
-						$html .= '<ul class="toc_list">' . $items . '</ul></div>' . "\n";
+						$html = $this->build_toc_html( $items, $css_classes, $toc_title_template );
 
-						if ( false !== $custom_toc_position ) {
+						if ( 'sticky-column' === $this->options['display_mode'] ) {
+							$content_with_anchors = $content;
+
+							if ( count( $find ) > 0 ) {
+								$content_with_anchors = $this->mb_find_replace( $find, $replace, $content_with_anchors );
+							}
+
+							if ( false !== $custom_toc_position ) {
+								$parts = explode( '<!--TOC-->', $content_with_anchors, 2 );
+
+								if ( 2 === count( $parts ) ) {
+									$content = $parts[0] . $this->build_sticky_column_layout( $html, $parts[1] );
+								} else {
+									$content = str_replace( '<!--TOC-->', $html, $content_with_anchors );
+								}
+							} elseif ( count( $find ) > 0 ) {
+								switch ( $this->options['position'] ) {
+									case TOC_POSITION_TOP:
+										$content = $this->build_sticky_column_layout( $html, $content_with_anchors );
+										break;
+
+									case TOC_POSITION_BOTTOM:
+										$content = $content_with_anchors . $html;
+										break;
+
+									case TOC_POSITION_AFTER_FIRST_HEADING:
+										$first_heading = $replace[0];
+										$split_at      = strpos( $content_with_anchors, $first_heading );
+
+										if ( false === $split_at ) {
+											$content = $this->build_sticky_column_layout( $html, $content_with_anchors );
+										} else {
+											$split_at += strlen( $first_heading );
+											$content   = substr( $content_with_anchors, 0, $split_at ) . $this->build_sticky_column_layout( $html, substr( $content_with_anchors, $split_at ) );
+										}
+										break;
+
+									case TOC_POSITION_BEFORE_FIRST_HEADING:
+									default:
+										$first_heading = $replace[0];
+										$split_at      = strpos( $content_with_anchors, $first_heading );
+
+										if ( false === $split_at ) {
+											$content = $this->build_sticky_column_layout( $html, $content_with_anchors );
+										} else {
+											$content = substr( $content_with_anchors, 0, $split_at ) . $this->build_sticky_column_layout( $html, substr( $content_with_anchors, $split_at ) );
+										}
+							}
+							} else {
+								$content = $this->build_sticky_column_layout( $html, $content_with_anchors );
+							}
+						} elseif ( false !== $custom_toc_position ) {
 							$find[]    = '<!--TOC-->';
 							$replace[] = $html;
 							$content   = $this->mb_find_replace( $find, $replace, $content );
