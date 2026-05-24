@@ -382,6 +382,25 @@ div.tab_content pre {
 	padding-left: 0;
 }
 
+.wptoc-admin-submit-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.wptoc-admin-reset-button {
+	border-color: #b42318 !important;
+	color: #b42318 !important;
+}
+
+.wptoc-admin-reset-button:hover,
+.wptoc-admin-reset-button:focus {
+	border-color: #912018 !important;
+	color: #912018 !important;
+	background: #fff1f1 !important;
+}
+
 div.more_toc_options {
 	margin-top: 12px;
 	margin-left: 0;

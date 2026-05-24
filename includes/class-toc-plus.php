@@ -848,11 +848,17 @@ jQuery(function($) {
 
 
 		private function get_export_settings_payload() {
+			$export_options = $this->sanitize_imported_options( $this->options );
+
+			if ( false === $export_options ) {
+				$export_options = $this->sanitize_imported_options( $this->defaults );
+			}
+
 			$payload = [
 				'plugin'      => 'WPTOC+',
 				'version'     => TOC_VERSION,
 				'exported_at' => current_time( 'mysql' ),
-				'options'     => $this->options,
+				'options'     => $export_options,
 			];
 
 			return wp_json_encode( $payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
@@ -1037,6 +1043,39 @@ jQuery(function($) {
 		}
 
 
+		private function restore_default_admin_options() {
+			global $post_id;
+
+			if ( ! isset( $_POST['toc-admin-options'] ) ) {
+				return new WP_Error( 'missing_nonce', __( 'Default restore failed security check.', 'table-of-contents-plus' ) );
+			}
+
+			if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['toc-admin-options'] ) ), plugin_basename( __FILE__ ) ) ) {
+				return new WP_Error( 'invalid_nonce', __( 'Default restore failed security check.', 'table-of-contents-plus' ) );
+			}
+
+			if ( ! current_user_can( 'manage_options', $post_id ) ) {
+				return new WP_Error( 'invalid_permissions', __( 'You do not have permission to restore default settings.', 'table-of-contents-plus' ) );
+			}
+
+			$this->options = $this->defaults;
+
+			unset(
+				$this->options['fragment_prefix'],
+				$this->options['bullet_spacing'],
+				$this->options['include_homepage'],
+				$this->options['restrict_path'],
+				$this->options['rest_toc_output'],
+				$this->options['sidebar_injection_selector'],
+				$this->options['sidebar_injection_behavior']
+			);
+
+			update_option( 'toc-options', $this->options );
+
+			return true;
+		}
+
+
 		public function admin_options() {
 			$page = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			$msg  = '';
@@ -1053,6 +1092,16 @@ jQuery(function($) {
 				} else {
 					$export_settings_payload = $this->get_export_settings_payload();
 					$msg = '<div id="message" class="wptoc-admin-alert is-success"><p>' . __( 'Settings imported.', 'table-of-contents-plus' ) . '</p></div>';
+				}
+			} elseif ( isset( $_POST['restore_default_settings'] ) ) {
+				$active_tab = 'tab4';
+				$result = $this->restore_default_admin_options();
+
+				if ( is_wp_error( $result ) ) {
+					$msg = '<div id="message" class="wptoc-admin-alert is-error"><p>' . esc_html( $result->get_error_message() ) . '</p></div>';
+				} else {
+					$export_settings_payload = $this->get_export_settings_payload();
+					$msg = '<div id="message" class="wptoc-admin-alert is-success"><p>' . __( 'Default settings restored.', 'table-of-contents-plus' ) . '</p></div>';
 				}
 			} elseif ( isset( $_GET['update'] ) ) {  // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 				if ( $this->save_admin_options() ) {
@@ -1628,6 +1677,7 @@ jQuery(function($) {
 			data-busy-text="<?php esc_attr_e( 'Please wait while WPTOC+ validates and imports your settings.', 'table-of-contents-plus' ); ?>"
 		/>
 	</p>
+
 	</div>
 
 
@@ -1635,9 +1685,17 @@ jQuery(function($) {
 </div>
 
 
-<p class="submit wptoc-admin-submit">
+<div class="submit wptoc-admin-submit-row">
+	<input
+		type="submit"
+		name="restore_default_settings"
+		class="button button-secondary wptoc-admin-reset-button"
+		value="<?php esc_attr_e( 'Reset Settings', 'table-of-contents-plus' ); ?>"
+		data-busy-title="<?php esc_attr_e( 'Restoring default settings', 'table-of-contents-plus' ); ?>"
+		data-busy-text="<?php esc_attr_e( 'Please wait while WPTOC+ restores the default settings.', 'table-of-contents-plus' ); ?>"
+	/>
 	<input type="submit" name="submit" class="button-primary" value="<?php esc_html_e( 'Update Options', 'table-of-contents-plus' ); ?>" />
-</p>
+</div>
 </form>
 </div>
 			<?php
