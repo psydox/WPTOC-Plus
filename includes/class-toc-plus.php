@@ -610,6 +610,19 @@ jQuery(function($) {
 
 
 		public function admin_init() {
+			wp_register_style(
+				'toc_admin_bootstrap_style',
+				TOC_PLUGIN_PATH . '/assets/bootstrap/css/bootstrap.min.css',
+				[],
+				'5.3.3'
+			);
+			wp_register_script(
+				'toc_admin_bootstrap_script',
+				TOC_PLUGIN_PATH . '/assets/bootstrap/js/bootstrap.bundle.min.js',
+				[ 'jquery' ],
+				'5.3.3',
+				true
+			);
 			wp_register_script( 'toc_admin_script', TOC_PLUGIN_PATH . '/admin.js', [], TOC_VERSION, true );
 			wp_register_style( 'toc_admin_style', TOC_PLUGIN_PATH . '/admin.css', [], TOC_VERSION );
 		}
@@ -669,8 +682,10 @@ jQuery(function($) {
 		 */
 		public function admin_options_head() {
 			wp_enqueue_style( 'farbtastic' );
+			wp_enqueue_style( 'toc_admin_bootstrap_style' );
 			wp_enqueue_script( 'farbtastic' );
 			wp_enqueue_script( 'jquery' );
+			wp_enqueue_script( 'toc_admin_bootstrap_script' );
 			wp_enqueue_script( 'toc_admin_script' );
 			wp_enqueue_style( 'toc_admin_style' );
 		}
@@ -1112,7 +1127,7 @@ jQuery(function($) {
 			}
 
 			?>
-<div id='toc' class='wrap wptoc-admin-page'>
+<div id='toc' class='wrap wptoc-admin-page container-fluid py-3'>
 	<div class="wptoc-admin-hero">
 		<h1>WPTOC+</h1>
 		<p><?php esc_html_e( 'Configure how the table of contents is inserted, displayed, and styled across your site.', 'table-of-contents-plus' ); ?></p>
@@ -1129,11 +1144,11 @@ jQuery(function($) {
 		</div>
 	</div>
 
-<ul id="tabbed-nav">
-	<li><a href="#tab1"><?php esc_html_e( 'Options', 'table-of-contents-plus' ); ?></a></li>
-	<li><a href="#tab2"><?php esc_html_e( 'Advanced Options', 'table-of-contents-plus' ); ?></a></li>
-	<li><a href="#tab3"><?php esc_html_e( 'Appearance', 'table-of-contents-plus' ); ?></a></li>
-	<li><a href="#tab4"><?php esc_html_e( 'Import / Export', 'table-of-contents-plus' ); ?></a></li>
+<ul id="tabbed-nav" class="nav nav-pills flex-wrap gap-2 mb-3">
+	<li class="nav-item"><a class="nav-link" href="#tab1"><?php esc_html_e( 'Options', 'table-of-contents-plus' ); ?></a></li>
+	<li class="nav-item"><a class="nav-link" href="#tab2"><?php esc_html_e( 'Advanced Options', 'table-of-contents-plus' ); ?></a></li>
+	<li class="nav-item"><a class="nav-link" href="#tab3"><?php esc_html_e( 'Appearance', 'table-of-contents-plus' ); ?></a></li>
+	<li class="nav-item"><a class="nav-link" href="#tab4"><?php esc_html_e( 'Import / Export', 'table-of-contents-plus' ); ?></a></li>
 
 	<?php
 	// XTEC ************ AFEGIT - Change default settings
@@ -1144,7 +1159,7 @@ jQuery(function($) {
 	// ************ FI
 	?>
 
-	<li class="url"><a href="https://github.com/psydox/WPTOC-Plus" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Help', 'table-of-contents-plus' ); ?></a></li>
+	<li class="url nav-item"><a class="nav-link" href="https://github.com/psydox/WPTOC-Plus" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Help', 'table-of-contents-plus' ); ?></a></li>
 
 	<?php
 	// XTEC ************ AFEGIT - Change default settings
@@ -1155,10 +1170,10 @@ jQuery(function($) {
 	// ************ FI
 	?>
 </ul>
-<div class="tab_container">
-	<div id="tab1" class="tab_content">
+<div class="tab_container card shadow-sm border-0 p-3 mb-3">
+	<div id="tab1" class="tab_content pt-2">
 
-<table class="form-table">
+<table class="form-table table table-borderless align-middle mb-4">
 <tbody>
 <tr>
 	<th><label for="position"><?php esc_html_e( 'Position', 'table-of-contents-plus' ); ?></label></th>
@@ -1325,9 +1340,9 @@ jQuery(function($) {
 
 	</div>
 
-	<div id="tab2" class="tab_content">
+	<div id="tab2" class="tab_content pt-2">
 	<h4><?php esc_html_e( 'Power options', 'table-of-contents-plus' ); ?></h4>
-	<table class="form-table">
+	<table class="form-table table table-borderless align-middle mb-4">
 	<tbody>
 
 	<?php
@@ -1437,9 +1452,9 @@ jQuery(function($) {
 	echo wp_kses_post( sprintf( __( 'If you would like to fully customise the position of the table of contents, you can use the %s shortcode by placing it at the desired position of your post, page or custom post type. This method allows you to generate the table of contents despite having auto insertion disabled for its content type. Please visit the help tab for further information about this shortcode.', 'table-of-contents-plus' ), '<code>[toc]</code>' ) ); ?></p>
 	</div>
 
-	<div id="tab3" class="tab_content">
+	<div id="tab3" class="tab_content pt-2">
 	<h3><?php esc_html_e( 'Appearance', 'table-of-contents-plus' ); ?></h3>
-	<table class="form-table">
+	<table class="form-table table table-borderless align-middle mb-4">
 	<tbody>
 	<tr>
 		<th><label for="width"><?php esc_html_e( 'Width', 'table-of-contents-plus' ); ?></label></td>
@@ -1659,7 +1674,7 @@ jQuery(function($) {
 	</table>
 	</div>
 
-	<div id="tab4" class="tab_content">
+	<div id="tab4" class="tab_content pt-2">
 	<h4><?php esc_html_e( 'Export Settings', 'table-of-contents-plus' ); ?></h4>
 	<p><?php esc_html_e( 'Copy this JSON bundle to back up your WPTOC+ settings or move them to another site running this fork.', 'table-of-contents-plus' ); ?></p>
 	<textarea class="large-text code wptoc-admin-export-field" rows="16" readonly="readonly"><?php echo esc_textarea( $export_settings_payload ); ?></textarea>

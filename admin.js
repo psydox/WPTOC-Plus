@@ -19,6 +19,8 @@ jQuery(document).ready(function($) {
 
 		$tabItems.removeClass('active');
 		$targetLink.parent('li').addClass('active');
+		$('ul#tabbed-nav a').removeClass('active');
+		$targetLink.addClass('active');
 		$tabContents.hide();
 		$(tabSelector).show();
 		$activeTabField.val(tabSelector.replace('#', ''));
@@ -70,7 +72,7 @@ jQuery(document).ready(function($) {
 
 	$adminForm.on('submit', function() {
 		var $form = $(this);
-		var $submit = $form.find('.wptoc-admin-submit .button-primary');
+		var $submit = $form.find('.wptoc-admin-submit-row .button-primary').first();
 		var submitter = $form.data('submitter') || {};
 		var originalLabel = $submit.data('original-label');
 

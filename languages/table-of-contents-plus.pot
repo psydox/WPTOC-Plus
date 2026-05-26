@@ -2,7 +2,7 @@
 # This file is distributed under the GPL2.
 msgid ""
 msgstr ""
-"Project-Id-Version: WPTOC+ 2026.05.26.2155\n"
+"Project-Id-Version: WPTOC+ 2026.05.27.0117\n"
 "Report-Msgid-Bugs-To: https://github.com/psydox/WPTOC-Plus\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
