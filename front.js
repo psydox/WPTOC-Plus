@@ -317,11 +317,42 @@ jQuery(document).ready(function($) {
 		entry.$link.addClass('is-active-link');
 		entry.$item.parents('li').addClass('is-active-parent');
 		syncCollapsibleBranches($container, true);
+		keepActiveHeadingInView($container, entry.$item);
+	}
+
+	function keepActiveHeadingInView($container, $item) {
+		var container = $container.get(0);
+		var item = $item.get(0);
+		var containerRect;
+		var itemRect;
+		var pad = 10;
+
+		if ( !container || !item || !$container.is(':visible') ) {
+			return;
+		}
+
+		// Only apply auto-follow when this TOC has its own scrollbar.
+		if ( container.scrollHeight <= container.clientHeight ) {
+			return;
+		}
+
+		containerRect = container.getBoundingClientRect();
+		itemRect = item.getBoundingClientRect();
+
+		if ( itemRect.top < ( containerRect.top + pad ) ) {
+			container.scrollTop -= ( containerRect.top + pad ) - itemRect.top;
+			return;
+		}
+
+		if ( itemRect.bottom > ( containerRect.bottom - pad ) ) {
+			container.scrollTop += itemRect.bottom - ( containerRect.bottom - pad );
+		}
 	}
 
 	function createActiveHeadingUpdater($container, eventNamespace) {
 		var trackedHeadings = buildTrackedHeadings($container);
 		var ticking = false;
+		var lastActiveTarget = null;
 		var scheduleUpdate = window.requestAnimationFrame || function(callback) {
 			return window.setTimeout(callback, 16);
 		};
@@ -351,6 +382,13 @@ jQuery(document).ready(function($) {
 			if ( !currentEntry ) {
 				currentEntry = trackedHeadings[0];
 			}
+
+			if ( currentEntry && currentEntry.target === lastActiveTarget ) {
+				keepActiveHeadingInView($container, currentEntry.$item);
+				return;
+			}
+
+			lastActiveTarget = currentEntry ? currentEntry.target : null;
 
 			setActiveHeading($container, currentEntry);
 		}
