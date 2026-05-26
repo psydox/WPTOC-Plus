@@ -3,7 +3,7 @@ Contributors: brianvrosario
 Tags: table of contents, indexes, toc, cms
 Requires at least: 3.2
 Tested up to: 6.7
-Stable tag: 2026.05.24.1545
+Stable tag: 2026.05.26.2155
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -90,6 +90,10 @@ WPTOC+ is currently maintained by Brian V. Rosario. This fork builds on the orig
 
 
 == Changelog ==
+= 2026.05.26.2155 =
+* Released: 26 May 2026 21:55 (local)
+* Updated plugin version metadata for this release
+
 = Unreleased =
 * Added active section highlighting for TOC links while scrolling
 * Added per-post TOC override controls in the standard WordPress editor

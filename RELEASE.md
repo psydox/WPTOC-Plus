@@ -6,6 +6,8 @@
 
 ## Current Fork Notes
 
+Updated: 2026-05-26 21:45:41 (local)
+
 Before the next release, make sure the published notes reflect the current fork scope:
 
 1. WPTOC+ is a TOC-only fork and does not include sitemap features.
@@ -19,3 +21,6 @@ Before the next release, make sure the published notes reflect the current fork 
 9. Nested TOC sections can now collapse and expand when hierarchy mode is enabled, with a setting for whether branches start collapsed or expanded.
 10. Sticky side-column mode now keeps the TOC above the article on smaller screens and follows the active Presentation styling instead of forcing its own shadow treatment.
 11. The Appearance tab now includes curated design presets such as Minimal, Editorial, Docs, and Card.
+12. Runtime uses the maintained unminified assets (`front.js` and `screen.css`) as the active frontend payload.
+13. Selector-based heading exclusions support simple selectors: `.class-name`, `#id-name`, `tag`, `tag.class-name`, and `tag#id-name`.
+14. Some advanced controls remain intentionally restricted to super-admin style users in this fork.

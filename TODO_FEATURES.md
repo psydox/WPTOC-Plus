@@ -10,7 +10,7 @@
 ## Feature Suggestions
 
 ### 1. Active Section Highlighting
-Highlight the current heading in the table of contents as the reader scrolls.
+Implemented. Highlights the current heading in the table of contents as the reader scrolls.
 
 Why it matters:
 - Makes long articles easier to navigate
@@ -18,7 +18,7 @@ Why it matters:
 - Builds directly on the anchor and heading logic already in place
 
 ### 2. Per-Post TOC Override
-Add a post/page level meta box so editors can force show, force hide, or override the TOC title for individual content.
+Implemented. Adds a post/page level meta box so editors can force show, force hide, or override the TOC title for individual content.
 
 Why it matters:
 - Removes the need for shortcode-only workarounds
@@ -110,4 +110,4 @@ Why it matters:
 1. Build a Gutenberg block
 2. Add copy link to heading
 3. Add reading progress integration
-4. Finish with accessibility enhancements across the TOC UI
+4. Add accessibility enhancements across the TOC UI, including stronger keyboard handling and reduced-motion behavior

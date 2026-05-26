@@ -10,6 +10,8 @@ This plugin is a great companion for content rich sites such as content manageme
 
 Includes an administration options panel where you can customise settings like display position, define the minimum number of headings before an index is displayed, appearance, smooth scrolling, active section highlighting, desktop display modes, mobile display modes, collapsible nested sections, selector-based exclusions, and more. The settings screen now separates Appearance from the main options and includes a dedicated Import / Export tab for moving WPTOC+ settings between sites or keeping a JSON backup. For power users, the advanced options cover heading inclusion, anchor formatting, custom styling, and widget-only output. Using shortcodes, you can override default behaviour such as custom placement or hiding the table of contents on a specific piece of content.
 
+Current runtime defaults in this fork include Top placement, a 4-heading minimum threshold, smooth scrolling enabled, hierarchy enabled, numeric list markers disabled, right wrapping, and inline display mode with inline mobile mode.
+
 Prefer to include the index in the sidebar? Go to Appearance > Widgets and drag the WPTOC+ widget to your desired sidebar and position.
 
 Custom post types are supported, however, auto insertion works only when the_content() has been used by the custom post type. Each post type will appear in the options panel, so enable the ones you want.
@@ -53,6 +55,7 @@ Custom post types are supported, however, auto insertion works only when the_con
 * If you use Divi or another builder, set per-post overrides in the normal WordPress editor.
 * The plugin now defaults to the unminified frontend assets used in this fork, which makes maintenance and debugging simpler.
 * Several low-value legacy settings were removed from the settings page to keep the plugin focused on TOC behaviour.
+* In this fork, some advanced controls (such as lowercase anchors, hyphenated anchors, CSS exclusion, smooth-scroll top offset, and the Help tab link) are intentionally shown only to super-admin style users.
 
 Project website: https://github.com/psydox/WPTOC-Plus
 
