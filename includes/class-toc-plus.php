@@ -1149,6 +1149,7 @@ jQuery(function($) {
 	<li class="nav-item"><a class="nav-link" href="#tab2"><?php esc_html_e( 'Advanced Options', 'table-of-contents-plus' ); ?></a></li>
 	<li class="nav-item"><a class="nav-link" href="#tab3"><?php esc_html_e( 'Appearance', 'table-of-contents-plus' ); ?></a></li>
 	<li class="nav-item"><a class="nav-link" href="#tab4"><?php esc_html_e( 'Import / Export', 'table-of-contents-plus' ); ?></a></li>
+	<li class="url nav-item"><a class="nav-link" href="https://brianrosario.com/support-me/" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Support Me', 'table-of-contents-plus' ); ?></a></li>
 
 	<?php
 	// XTEC ************ AFEGIT - Change default settings
