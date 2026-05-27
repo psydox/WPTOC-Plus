@@ -381,6 +381,12 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 				return $plugin_meta;
 			}
 
+			$visit_plugin_site_link = sprintf(
+				'<a href="%1$s" target="_blank" rel="noopener noreferrer">%2$s</a>',
+				esc_url( 'https://github.com/psydox/WPTOC-Plus' ),
+				esc_html__( 'Visit plugin site', 'table-of-contents-plus' )
+			);
+
 			foreach ( $plugin_meta as $index => $meta_link ) {
 				if (
 					false !== strpos( $meta_link, 'plugin-install.php?tab=plugin-information' ) ||
@@ -390,7 +396,24 @@ if ( ! class_exists( 'TOC_Plus' ) ) :
 				}
 			}
 
-			return array_values( $plugin_meta );
+			$plugin_meta = array_values( $plugin_meta );
+			$updated_meta = [];
+			$inserted = false;
+
+			foreach ( $plugin_meta as $meta_link ) {
+				$updated_meta[] = $meta_link;
+
+				if ( ! $inserted && false !== strpos( strtolower( $meta_link ), 'author' ) ) {
+					$updated_meta[] = $visit_plugin_site_link;
+					$inserted = true;
+				}
+			}
+
+			if ( ! $inserted ) {
+				$updated_meta[] = $visit_plugin_site_link;
+			}
+
+			return $updated_meta;
 		}
 
 

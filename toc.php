@@ -8,7 +8,7 @@
  * Update URI:  https://github.com/psydox/WPTOC-Plus
  * Text Domain: table-of-contents-plus
  * Domain Path: /languages
- * Version:     2026.05.27.0316
+ * Version:     2026.05.27.1420
  * License:     GPL2
  */
 
