@@ -3,7 +3,7 @@ Contributors: brianvrosario
 Tags: table of contents, indexes, toc, cms
 Requires at least: 3.2
 Tested up to: 6.7
-Stable tag: 2026.05.27.1420
+Stable tag: 2026.05.27.1520
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -90,6 +90,10 @@ WPTOC+ is currently maintained by Brian V. Rosario. This fork builds on the orig
 
 
 == Changelog ==
+= 2026.05.27.1520 =
+* Released: 27 May 2026 15:20 (local)
+* Updated plugin version metadata for testing
+
 = 2026.05.27.1420 =
 * Released: 27 May 2026 14:20 (local)
 * Updated plugin version metadata for this release
